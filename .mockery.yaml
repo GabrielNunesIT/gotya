@@ -1,0 +1,9 @@
+with-expecter: true
+packages:
+  github.com/gotya/gotya/...:
+    config:
+      dir: "{{.InterfaceDir}}"
+      mockname: "Mock{{.InterfaceName}}"
+      outpkg: "{{.PackageName}}"
+      filename: "mock_{{.InterfaceName | lower}}.go"
+      inpackage: true
