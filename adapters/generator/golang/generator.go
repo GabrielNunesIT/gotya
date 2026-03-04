@@ -623,7 +623,7 @@ func (g *GoGenerator) generateUnionStruct(typeName string, members []schema.Type
 }
 
 func (g *GoGenerator) writeValidationRule(w io.Writer, fieldName, ptrExpr string, typ schema.TypeDefinition) error {
-	valExpr := "(*" + ptrExpr + ")"
+	valExpr := "*" + ptrExpr
 	if typ.Name == "binary" {
 		valExpr = ptrExpr // []byte is not a pointer
 	}
@@ -681,7 +681,7 @@ func buildLengthCondition(valExpr, yangType string, lengths []string) string {
 					maxCond = fmt.Sprintf("%s <= %s", lengthFunc, maxStr)
 				}
 				if minCond != "" && maxCond != "" {
-					partConds = append(partConds, fmt.Sprintf("(%s && %s)", minCond, maxCond))
+					partConds = append(partConds, fmt.Sprintf("%s && %s", minCond, maxCond))
 				} else if minCond != "" {
 					partConds = append(partConds, minCond)
 				} else if maxCond != "" {
@@ -694,11 +694,16 @@ func buildLengthCondition(valExpr, yangType string, lengths []string) string {
 			}
 		}
 		if len(partConds) > 0 {
-			conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(partConds, " || ")))
+			conditions = append(conditions, strings.Join(partConds, " || "))
 		}
 	}
 	if len(conditions) == 0 {
 		return ""
+	}
+	if len(conditions) > 1 {
+		for i, c := range conditions {
+			conditions[i] = fmt.Sprintf("(%s)", c)
+		}
 	}
 	return strings.Join(conditions, " && ")
 }
@@ -722,7 +727,7 @@ func buildRangeCondition(valExpr string, ranges []string) string {
 					maxCond = fmt.Sprintf("%s <= %s", valExpr, maxStr)
 				}
 				if minCond != "" && maxCond != "" {
-					partConds = append(partConds, fmt.Sprintf("(%s && %s)", minCond, maxCond))
+					partConds = append(partConds, fmt.Sprintf("%s && %s", minCond, maxCond))
 				} else if minCond != "" {
 					partConds = append(partConds, minCond)
 				} else if maxCond != "" {
@@ -735,11 +740,16 @@ func buildRangeCondition(valExpr string, ranges []string) string {
 			}
 		}
 		if len(partConds) > 0 {
-			conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(partConds, " || ")))
+			conditions = append(conditions, strings.Join(partConds, " || "))
 		}
 	}
 	if len(conditions) == 0 {
 		return ""
+	}
+	if len(conditions) > 1 {
+		for i, c := range conditions {
+			conditions[i] = fmt.Sprintf("(%s)", c)
+		}
 	}
 	return strings.Join(conditions, " && ")
 }
