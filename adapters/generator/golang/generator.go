@@ -223,7 +223,7 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 	case *schema.Container:
 		return g.generateStruct(n.Name(), n.Children, "container", w, visited, prefix, suffix, namespace, configOnly)
 	case *schema.List:
-		return g.generateStruct(n.Name(), n.Children, "list", w, visited, prefix, suffix, namespace, configOnly)
+		return g.generateStruct(n.Name()+"Entry", n.Children, "list", w, visited, prefix, suffix, namespace, configOnly)
 	case *schema.Leaf:
 		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
 			ut := unionGoTypeName(prefix, n.Name())
@@ -282,7 +282,6 @@ func (g *GoGenerator) generateStruct(name string, children map[string]schema.Nod
 	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
 		return fmt.Errorf("write err: %w", err)
 	}
-
 	if err := g.generateValidationChecks(structName, validFlatNodes, w); err != nil {
 		return err
 	}
@@ -319,7 +318,7 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 	case *schema.Container:
 		goType = "*" + prefix + toCamelCaseTitle(n.Name()) + suffix
 	case *schema.List:
-		goType = "map[string]*" + prefix + toCamelCaseTitle(n.Name()) + suffix
+		goType = "[]*" + prefix + toCamelCaseTitle(n.Name()) + "Entry" + suffix
 	}
 
 	xmlTag := fmt.Sprintf(" xml:\"%s,omitempty\"", node.Name())
@@ -465,6 +464,7 @@ func getFlatDataNodes(nodes map[string]schema.Node) []schema.Node {
 	walk(nodes)
 	return result
 }
+
 
 // unionGoTypeName builds a unique Go type name for a union leaf.
 func unionGoTypeName(prefix, leafName string) string {
