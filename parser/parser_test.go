@@ -3,8 +3,8 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/adapters/parser/parser"
+	"github.com/gotya/gotya/parser"
+	"github.com/gotya/gotya/parser/lexer"
 	"github.com/stretchr/testify/assert"
 )
 

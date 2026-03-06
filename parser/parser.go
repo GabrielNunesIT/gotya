@@ -4,9 +4,9 @@ package parser
 import (
 	"fmt"
 
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/domain/ast"
-	"github.com/gotya/gotya/domain/token"
+	"github.com/gotya/gotya/ast"
+	"github.com/gotya/gotya/parser/lexer"
+	"github.com/gotya/gotya/token"
 )
 
 // Parser holds the state for the recursive descent parser.

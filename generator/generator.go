@@ -4,7 +4,7 @@ package generator
 import (
 	"io"
 
-	"github.com/gotya/gotya/domain/schema"
+	"github.com/gotya/gotya/schema"
 )
 
 // Generator defines the interface for creating source code from a compiled schema tree.

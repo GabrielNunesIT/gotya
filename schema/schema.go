@@ -4,7 +4,7 @@ package schema
 import (
 	"fmt"
 
-	"github.com/gotya/gotya/domain/ast"
+	"github.com/gotya/gotya/ast"
 )
 
 // Node is the interface implemented by all schema data// Node represents any node in the schema tree.

@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/gotya/gotya/adapters/generator/golang"
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/adapters/parser/parser"
-	"github.com/gotya/gotya/usecases/compiler"
+	"github.com/gotya/gotya/compiler"
+	"github.com/gotya/gotya/generator/golang"
+	"github.com/gotya/gotya/parser"
+	"github.com/gotya/gotya/parser/lexer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,8 +68,10 @@ module test-module {
 	comp := compiler.New(opts)
 	schemaMod, err := comp.Compile(astMod)
 	assert.NoError(t, err)
-
-	gen := golang.New("testpkg")
+	gen := golang.New(&golang.Options{
+		PackageName:         "testpkg",
+		GenerateOrderedMaps: true,
+	})
 	var buf bytes.Buffer
 	err = gen.Generate(schemaMod, &buf)
 	assert.NoError(t, err)

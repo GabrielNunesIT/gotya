@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gotya/gotya/domain/ast"
-	"github.com/gotya/gotya/domain/schema"
+	"github.com/gotya/gotya/ast"
+	"github.com/gotya/gotya/schema"
 )
 
 // ModuleLoader provides a way to load external modules and submodules.
@@ -841,13 +841,13 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 		if idx := strings.Index(groupName, ":"); idx != -1 {
 			searchName = groupName[idx+1:]
 		}
-		
+
 		if grp, ok := localGroupings[searchName]; ok {
 			grpAST = grp
 		} else if grp, ok := c.groupings[searchName]; ok {
 			grpAST = grp
 		}
-		
+
 		if grpAST == nil {
 			for i := len(c.externalGroupStack) - 1; i >= 0; i-- {
 				if grp, ok := c.externalGroupStack[i][searchName]; ok {

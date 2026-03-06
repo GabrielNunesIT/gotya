@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gotya/gotya/adapters/generator/protobuf"
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/adapters/parser/parser"
-	"github.com/gotya/gotya/domain/schema"
-	"github.com/gotya/gotya/usecases/compiler"
+	"github.com/gotya/gotya/compiler"
+	"github.com/gotya/gotya/generator/protobuf"
+	"github.com/gotya/gotya/parser"
+	"github.com/gotya/gotya/parser/lexer"
+	"github.com/gotya/gotya/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ import (
 func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 	t.Parallel()
 
-	yangsDir := filepath.Join("..", "..", "..", "test", "assets", "yangs")
+	yangsDir := filepath.Join("..", "..", "test", "assets", "yangs")
 
 	files, err := os.ReadDir(yangsDir)
 	require.NoError(t, err)
@@ -55,8 +55,10 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 	}
 
 	require.NotEmpty(t, modules, "Expected to successfully parse at least one module")
-
-	gen := protobuf.New("device")
+	gen := protobuf.New(&protobuf.Options{
+		PackageName:      "device",
+		GenerateFakeroot: true,
+	})
 	var buf bytes.Buffer
 	err = gen.GenerateDevice(modules, &buf)
 	assert.NoError(t, err)
@@ -64,7 +66,7 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 	out := buf.String()
 	assert.Contains(t, out, "message Device {")
 
-	outDir := filepath.Join("..", "..", "..", "test", "out")
+	outDir := filepath.Join("..", "..", "test", "out")
 	err = os.MkdirAll(outDir, 0755)
 	require.NoError(t, err)
 

@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gotya/gotya/adapters/generator/golang"
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/adapters/parser/parser"
-	"github.com/gotya/gotya/domain/ast"
-	"github.com/gotya/gotya/domain/schema"
-	"github.com/gotya/gotya/usecases/compiler"
+	"github.com/gotya/gotya/ast"
+	"github.com/gotya/gotya/compiler"
+	"github.com/gotya/gotya/generator/golang"
+	"github.com/gotya/gotya/parser"
+	"github.com/gotya/gotya/parser/lexer"
+	"github.com/gotya/gotya/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,7 +95,7 @@ func (l *testLoader) Load(name string) (*schema.Module, error) {
 func TestGenerateDeviceFromTestAssets(t *testing.T) {
 	t.Parallel()
 
-	yangsDir := filepath.Join("..", "..", "..", "test", "assets", "yangs")
+	yangsDir := filepath.Join("..", "..", "test", "assets", "yangs")
 
 	// Read all .yang files in the directory
 	files, err := os.ReadDir(yangsDir)
@@ -141,8 +141,11 @@ func TestGenerateDeviceFromTestAssets(t *testing.T) {
 	}
 
 	require.NotEmpty(t, modules, "Expected to successfully parse at least one module")
-
-	gen := golang.New("device")
+	gen := golang.New(&golang.Options{
+		PackageName:      "device",
+		RootName:         "Device",
+		GenerateFakeroot: true,
+	})
 	var buf bytes.Buffer
 	err = gen.GenerateDevice(modules, &buf)
 	assert.NoError(t, err)
@@ -151,7 +154,7 @@ func TestGenerateDeviceFromTestAssets(t *testing.T) {
 	assert.Contains(t, out, "type DeviceConfig struct {")
 	assert.Contains(t, out, "type DeviceState struct {")
 
-	outDir := filepath.Join("..", "..", "..", "test", "out")
+	outDir := filepath.Join("..", "..", "test", "out")
 	err = os.MkdirAll(outDir, 0750)
 	require.NoError(t, err)
 

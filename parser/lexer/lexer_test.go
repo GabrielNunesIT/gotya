@@ -3,8 +3,8 @@ package lexer_test
 import (
 	"testing"
 
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/domain/token"
+	"github.com/gotya/gotya/parser/lexer"
+	"github.com/gotya/gotya/token"
 	"github.com/stretchr/testify/assert"
 )
 

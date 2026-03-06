@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/gotya/gotya/adapters/generator/protobuf"
-	"github.com/gotya/gotya/adapters/parser/lexer"
-	"github.com/gotya/gotya/adapters/parser/parser"
-	"github.com/gotya/gotya/usecases/compiler"
+	"github.com/gotya/gotya/compiler"
+	"github.com/gotya/gotya/generator/protobuf"
+	"github.com/gotya/gotya/parser"
+	"github.com/gotya/gotya/parser/lexer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,8 +63,9 @@ module test-module {
 	c := compiler.New(&compiler.Options{})
 	schemaMod, err := c.Compile(astMod)
 	require.NoError(t, err)
-
-	gen := protobuf.New("test_package")
+	gen := protobuf.New(&protobuf.Options{
+		PackageName: "test_package",
+	})
 	var buf bytes.Buffer
 	err = gen.Generate(schemaMod, &buf)
 	require.NoError(t, err)
