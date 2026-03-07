@@ -32,6 +32,7 @@ func main() {
 	settersFlag := flag.Bool("generate_setters", false, "If set to true, generate setter methods for fields")
 	populateDefFlag := flag.Bool("generate_populate_default", false, "If set to true, generate PopulateDefaults method")
 	orderedMapsFlag := flag.Bool("generate_ordered_maps", false, "If set to true, generates lists as slices instead of maps")
+	protoCELFlag := flag.Bool("proto_cel", false, "If set to true, emit bufbuild/protovalidate CEL constraints for protobuf")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <yang files...>\n\n", os.Args[0])
@@ -96,7 +97,7 @@ func main() {
 	case "go":
 		generateGo(schemaModules, *outdirFlag, *pkgFlag, *rootFlag, *fakeRootFlag, *skipDepFlag, *skipObsFlag, *annotationsFlag, *gettersFlag, *settersFlag, *populateDefFlag, *orderedMapsFlag)
 	case "pb":
-		generateProtobuf(schemaModules, *outdirFlag, *pkgFlag, *rootFlag, *fakeRootFlag, *skipDepFlag, *skipObsFlag, *annotationsFlag, *gettersFlag, *settersFlag, *populateDefFlag, *orderedMapsFlag)
+		generateProtobuf(schemaModules, *outdirFlag, *pkgFlag, *rootFlag, *fakeRootFlag, *skipDepFlag, *skipObsFlag, *annotationsFlag, *gettersFlag, *settersFlag, *populateDefFlag, *orderedMapsFlag, *protoCELFlag)
 	default:
 		log.Fatalf("Unknown generation format: %s", *formatFlag)
 	}
@@ -136,7 +137,7 @@ func generateGo(modules []*schema.Module, outDir, pkgName, rootName string, genF
 }
 
 // generateProtobuf invokes the Protobuf compiler logic to emit .proto targets natively
-func generateProtobuf(modules []*schema.Module, outDir, pkgName, rootName string, genFakeroot, skipDep, skipObs, addAnn, genGetters, genSetters, genPopDef, genOrdMaps bool) {
+func generateProtobuf(modules []*schema.Module, outDir, pkgName, rootName string, genFakeroot, skipDep, skipObs, addAnn, genGetters, genSetters, genPopDef, genOrdMaps, celVal bool) {
 	outPath := filepath.Clean(filepath.Join(outDir, "device.proto"))
 	outFile, err := os.Create(outPath)
 	if err != nil {
@@ -161,6 +162,7 @@ func generateProtobuf(modules []*schema.Module, outDir, pkgName, rootName string
 		GenerateSetters:         genSetters,
 		GeneratePopulateDefault: genPopDef,
 		GenerateOrderedMaps:     genOrdMaps,
+		GenerateCELValidation:   celVal,
 	})
 	if err := gen.GenerateDevice(modules, outFile); err != nil {
 		log.Fatalf("Protobuf generator failed: %v", err)

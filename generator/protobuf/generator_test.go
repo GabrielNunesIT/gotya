@@ -8,6 +8,7 @@ import (
 	"github.com/gotya/gotya/generator/protobuf"
 	"github.com/gotya/gotya/parser"
 	"github.com/gotya/gotya/parser/lexer"
+	"github.com/gotya/gotya/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,6 +23,7 @@ module test-module {
 	container system {
 		leaf hostname {
 			type string;
+			default "localhost";
 		}
 		list interface {
 			key "name";
@@ -30,6 +32,7 @@ module test-module {
 			}
 			leaf enabled {
 				type boolean;
+				default "true";
 			}
 			leaf mtu {
 				type uint16;
@@ -39,8 +42,10 @@ module test-module {
 					enum UP;
 					enum DOWN;
 				}
+				default "UP";
 			}
 			choice protocol {
+				default "http";
 				case http {
 					leaf port { type uint16; }
 				}
@@ -64,7 +69,8 @@ module test-module {
 	schemaMod, err := c.Compile(astMod)
 	require.NoError(t, err)
 	gen := protobuf.New(&protobuf.Options{
-		PackageName: "test_package",
+		PackageName:             "test_package",
+		GeneratePopulateDefault: true,
 	})
 	var buf bytes.Buffer
 	err = gen.Generate(schemaMod, &buf)
@@ -75,18 +81,26 @@ module test-module {
 	// High level assert structures generated
 	assert.Contains(t, out, "package test_package;")
 	assert.Contains(t, out, "message System {")
-	assert.Contains(t, out, "string hostname = 1;")
+	// Assert defaults generated locally
+	assert.Contains(t, out, "import \"google/protobuf/descriptor.proto\";")
+	assert.Contains(t, out, "extend google.protobuf.FieldOptions {")
+	assert.Contains(t, out, "string gotya_default = 50000;")
+	
+	// Assert generated fields with extensions
+	assert.Contains(t, out, "string hostname = 1 [(gotya_default) = \"localhost\"];")
 	assert.Contains(t, out, "repeated Interface interface = 2;")
 
 	assert.Contains(t, out, "message Interface {")
 	assert.Contains(t, out, "repeated string aliases = 1;")
-	assert.Contains(t, out, "bool enabled = 2;")
+	assert.Contains(t, out, "bool enabled = 2 [(gotya_default) = \"true\"];")
 	assert.Contains(t, out, "uint32 mtu = 3;")
 	assert.Contains(t, out, "string name = 4;")
+	
 	assert.Contains(t, out, "oneof protocol {")
+	assert.Contains(t, out, "option (gotya_oneof_default) = \"http\";")
 	assert.Contains(t, out, "HttpCase http = 5;")
 	assert.Contains(t, out, "HttpsCase https = 6;")
-	assert.Contains(t, out, "Status status = 7;")
+	assert.Contains(t, out, "Status status = 7 [(gotya_default) = \"UP\"];")
 
 	// Check if enums were generated properly
 	assert.Contains(t, out, "enum Status {")
@@ -98,4 +112,62 @@ module test-module {
 	assert.Contains(t, out, "uint32 port = 1;")
 	assert.Contains(t, out, "message HttpsCase {")
 	assert.Contains(t, out, "uint32 secure_port = 1;")
+}
+
+func TestProtoGenerator_GenerateDevice(t *testing.T) {
+	yangSource1 := `
+module test-module-1 {
+	namespace "urn:test1";
+	prefix t1;
+	container sys {
+		leaf id { type string; }
+	}
+}`
+	yangSource2 := `
+module test-module-2 {
+	namespace "urn:test2";
+	prefix t2;
+	container net {
+		leaf port { type uint16; }
+	}
+}`
+	l1 := lexer.New(yangSource1)
+	p1 := parser.New(l1)
+	astMod1 := p1.ParseModule()
+	require.NotNil(t, astMod1)
+
+	l2 := lexer.New(yangSource2)
+	p2 := parser.New(l2)
+	astMod2 := p2.ParseModule()
+	require.NotNil(t, astMod2)
+
+	c := compiler.New(&compiler.Options{})
+	schemaMod1, err := c.Compile(astMod1)
+	require.NoError(t, err)
+	schemaMod2, err := c.Compile(astMod2)
+	require.NoError(t, err)
+
+	gen := protobuf.New(&protobuf.Options{
+		PackageName: "test_pkg",
+		GenerateFakeroot: true,
+		GenerateCELValidation: true,
+	})
+	var buf bytes.Buffer
+	err = gen.(*protobuf.ProtoGenerator).GenerateDevice([]*schema.Module{schemaMod1, schemaMod2}, &buf)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "message Device {")
+	assert.Contains(t, out, "TestModule_1 test_module_1 = 1;")
+	assert.Contains(t, out, "TestModule_2 test_module_2 = 2;")
+	assert.Contains(t, out, "message TestModule_1 {")
+	assert.Contains(t, out, "message Sys {")
+}
+
+func TestNew(t *testing.T) {
+	gen := protobuf.New(nil)
+	assert.NotNil(t, gen)
+
+	gen2 := protobuf.New(&protobuf.Options{})
+	assert.NotNil(t, gen2)
 }
