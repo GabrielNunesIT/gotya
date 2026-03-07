@@ -26,7 +26,7 @@ func buildValidateOptions(td schema.TypeDefinition, repeated bool, protoBaseType
 			}
 			rules = append(rules, fmt.Sprintf("pattern: %q", pattern))
 		} else {
-			var parts []string
+			parts := make([]string, 0, len(td.Pattern))
 			for _, pat := range td.Pattern {
 				if !strings.HasPrefix(pat, "^") {
 					pat = "^" + pat
@@ -44,25 +44,24 @@ func buildValidateOptions(td schema.TypeDefinition, repeated bool, protoBaseType
 	// Handle Length constraints
 	if len(td.Length) > 0 && (protoBaseType == "string" || protoBaseType == "bytes") {
 		lengthExpr := td.Length[0]
-		min, max, isMulti := parseBounds(lengthExpr)
+		minVal, maxVal, isMulti := parseBounds(lengthExpr)
 		if isMulti {
 			celExpr := translateBoundsToCEL(lengthExpr, "this.size()")
 			if celExpr != "" {
 				celRule := fmt.Sprintf("{ id: %q, expression: %q }", "length", celExpr)
 				return formatFieldRule(repeated, "cel", celRule)
 			}
-		} else if min != "" || max != "" {
-			if min == max {
-				rules = append(rules, fmt.Sprintf("len: %s", min))
+		} else if minVal != "" || maxVal != "" {
+			if minVal == maxVal {
+				rules = append(rules, "len: "+minVal)
 			} else {
-				if min != "" && min != "min" {
-					if protoBaseType == "bytes" && min == "0" {
-					} else {
-						rules = append(rules, fmt.Sprintf("min_len: %s", min))
+				if minVal != "" && minVal != "min" {
+					if protoBaseType != "bytes" || minVal != "0" {
+						rules = append(rules, "min_len: "+minVal)
 					}
 				}
-				if max != "" && max != "max" {
-					rules = append(rules, fmt.Sprintf("max_len: %s", max))
+				if maxVal != "" && maxVal != "max" {
+					rules = append(rules, "max_len: "+maxVal)
 				}
 			}
 		}
@@ -71,22 +70,22 @@ func buildValidateOptions(td schema.TypeDefinition, repeated bool, protoBaseType
 	// Handle Range constraints
 	if len(td.Range) > 0 && isNumericProtoBase(protoBaseType) {
 		rangeExpr := td.Range[0]
-		min, max, isMulti := parseBounds(rangeExpr)
+		minVal, maxVal, isMulti := parseBounds(rangeExpr)
 		if isMulti {
 			celExpr := translateBoundsToCEL(rangeExpr, "this")
 			if celExpr != "" {
 				celRule := fmt.Sprintf("{ id: %q, expression: %q }", "range", celExpr)
 				return formatFieldRule(repeated, "cel", celRule)
 			}
-		} else if min != "" || max != "" {
-			if min == max {
-				rules = append(rules, fmt.Sprintf("in: [%s]", min))
+		} else if minVal != "" || maxVal != "" {
+			if minVal == maxVal {
+				rules = append(rules, fmt.Sprintf("in: [%s]", minVal))
 			} else {
-				if min != "" && min != "min" {
-					rules = append(rules, fmt.Sprintf("gte: %s", min))
+				if minVal != "" && minVal != "min" {
+					rules = append(rules, "gte: "+minVal)
 				}
-				if max != "" && max != "max" {
-					rules = append(rules, fmt.Sprintf("lte: %s", max))
+				if maxVal != "" && maxVal != "max" {
+					rules = append(rules, "lte: "+maxVal)
 				}
 			}
 		}
@@ -138,13 +137,13 @@ func translateBoundsToCEL(expr string, varName string) string {
 		if len(rng) == 1 {
 			conditions = append(conditions, fmt.Sprintf("(%s == %s)", varName, rng[0]))
 		} else {
-			min, max := rng[0], rng[1]
+			minVal, maxVal := rng[0], rng[1]
 			var subCond []string
-			if min != "min" {
-				subCond = append(subCond, fmt.Sprintf("%s >= %s", varName, min))
+			if minVal != "min" {
+				subCond = append(subCond, fmt.Sprintf("%s >= %s", varName, minVal))
 			}
-			if max != "max" {
-				subCond = append(subCond, fmt.Sprintf("%s <= %s", varName, max))
+			if maxVal != "max" {
+				subCond = append(subCond, fmt.Sprintf("%s <= %s", varName, maxVal))
 			}
 			if len(subCond) > 0 {
 				conditions = append(conditions, "("+strings.Join(subCond, " && ")+")")

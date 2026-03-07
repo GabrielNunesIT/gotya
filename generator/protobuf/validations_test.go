@@ -1,3 +1,4 @@
+//nolint:testpackage
 package protobuf
 
 import (
@@ -8,6 +9,7 @@ import (
 )
 
 func TestBuildValidateOptions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		td            schema.TypeDefinition
@@ -117,6 +119,7 @@ func TestBuildValidateOptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := buildValidateOptions(tt.td, tt.repeated, tt.protoBaseType); got != tt.want {
 				t.Errorf("buildValidateOptions() = %v, want %v", got, tt.want)
 			}
@@ -125,6 +128,7 @@ func TestBuildValidateOptions(t *testing.T) {
 }
 
 func TestParseBounds(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		expr    string
 		min     string
@@ -140,6 +144,7 @@ func TestParseBounds(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.expr, func(t *testing.T) {
+			t.Parallel()
 			gotMin, gotMax, gotIsMulti := parseBounds(tt.expr)
 			if gotMin != tt.min {
 				t.Errorf("parseBounds() gotMin = %v, want %v", gotMin, tt.min)
@@ -155,6 +160,7 @@ func TestParseBounds(t *testing.T) {
 }
 
 func TestTranslateBoundsToCEL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		expr string
 		want string
@@ -165,6 +171,7 @@ func TestTranslateBoundsToCEL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.expr, func(t *testing.T) {
+			t.Parallel()
 			if got := translateBoundsToCEL(tt.expr, "this"); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("translateBoundsToCEL() = %v, want %v", got, tt.want)
 			}

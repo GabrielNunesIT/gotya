@@ -323,6 +323,36 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 					return err
 				}
 			}
+		} else if n.Type.Name == "bits" && len(n.Type.Bits) > 0 {
+			bt := bitsGoTypeName(prefix, n.Name())
+			if n.Type.TypedefName != "" {
+				bt = typedefGoTypeName(prefix, n.Type.TypedefName)
+			}
+			if !visited[bt] {
+				visited[bt] = true
+				if err := g.generateBitsType(bt, n.Type.Bits, w); err != nil {
+					return err
+				}
+			}
+		} else if n.Type.Name == "enumeration" && len(n.Type.Enums) > 0 {
+			et := enumGoTypeName(prefix, n.Name())
+			if n.Type.TypedefName != "" {
+				et = typedefGoTypeName(prefix, n.Type.TypedefName)
+			}
+			if !visited[et] {
+				visited[et] = true
+				if err := g.generateEnumType(et, n.Type.Enums, w); err != nil {
+					return err
+				}
+			}
+		} else if n.Type.TypedefName != "" && isScalarType(n.Type.Name) {
+			tt := typedefGoTypeName(prefix, n.Type.TypedefName)
+			if !visited[tt] {
+				visited[tt] = true
+				if err := g.generateTypedef(tt, mapYANGTypeToGoBase(n.Type.Name), w); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -501,6 +531,20 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 	case *schema.LeafList:
 		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
 			goType = "[]" + unionGoTypeName(prefix, n.Name())
+		} else if n.Type.Name == "bits" && len(n.Type.Bits) > 0 {
+			if n.Type.TypedefName != "" {
+				goType = "[]*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			} else {
+				goType = "[]*" + bitsGoTypeName(prefix, n.Name())
+			}
+		} else if n.Type.Name == "enumeration" && len(n.Type.Enums) > 0 {
+			if n.Type.TypedefName != "" {
+				goType = "[]*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			} else {
+				goType = "[]*" + enumGoTypeName(prefix, n.Name())
+			}
+		} else if n.Type.TypedefName != "" && isScalarType(n.Type.Name) {
+			goType = "[]*" + typedefGoTypeName(prefix, n.Type.TypedefName)
 		} else {
 			goType = "[]" + mapYANGTypeToGo(n.Type.Name)
 		}
@@ -1067,8 +1111,26 @@ func (g *GoGenerator) resolveFieldTypeInfo(node schema.Node, prefix, suffix stri
 	switch n := node.(type) {
 	case *schema.Leaf:
 		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
-			goType = unionGoTypeName(prefix, n.Name())
-			isPtr = true // For unions, we usually store as interface, effectively a pointer
+			goType = "*" + unionGoTypeName(prefix, n.Name())
+			isPtr = true
+			isContainer = true // Treat union like a container passing the pointer around
+		} else if n.Type.Name == "bits" && len(n.Type.Bits) > 0 {
+			if n.Type.TypedefName != "" {
+				goType = "*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			} else {
+				goType = "*" + bitsGoTypeName(prefix, n.Name())
+			}
+			isPtr = true
+		} else if n.Type.Name == "enumeration" && len(n.Type.Enums) > 0 {
+			if n.Type.TypedefName != "" {
+				goType = "*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			} else {
+				goType = "*" + enumGoTypeName(prefix, n.Name())
+			}
+			isPtr = true
+		} else if n.Type.TypedefName != "" && isScalarType(n.Type.Name) {
+			goType = "*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			isPtr = true
 		} else {
 			goType = mapYANGTypeToGo(n.Type.Name)
 			if strings.HasPrefix(goType, "*") {
@@ -1078,6 +1140,20 @@ func (g *GoGenerator) resolveFieldTypeInfo(node schema.Node, prefix, suffix stri
 	case *schema.LeafList:
 		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
 			goType = "[]" + unionGoTypeName(prefix, n.Name())
+		} else if n.Type.Name == "bits" && len(n.Type.Bits) > 0 {
+			if n.Type.TypedefName != "" {
+				goType = "[]*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			} else {
+				goType = "[]*" + bitsGoTypeName(prefix, n.Name())
+			}
+		} else if n.Type.Name == "enumeration" && len(n.Type.Enums) > 0 {
+			if n.Type.TypedefName != "" {
+				goType = "[]*" + typedefGoTypeName(prefix, n.Type.TypedefName)
+			} else {
+				goType = "[]*" + enumGoTypeName(prefix, n.Name())
+			}
+		} else if n.Type.TypedefName != "" && isScalarType(n.Type.Name) {
+			goType = "[]*" + typedefGoTypeName(prefix, n.Type.TypedefName)
 		} else {
 			goType = "[]" + mapYANGTypeToGo(n.Type.Name)
 		}

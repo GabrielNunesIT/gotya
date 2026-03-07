@@ -361,12 +361,12 @@ func (g *ProtoGenerator) generateField(node schema.Node, w io.Writer, fieldIndex
 		if n.Type.Name == "enumeration" && len(n.Type.Enums) > 0 {
 			protoType = toCamelCaseTitle(n.Name())
 			if g.Options.GeneratePopulateDefault && n.Default != nil {
-                // Determine if we need to set the value mapping to an enum key or raw string. Typically Enum default is the raw string of the enum identifier
+				// Determine if we need to set the value mapping to an enum key or raw string. Typically Enum default is the raw string of the enum identifier
 				// To keep it simple, we treat enum custom defaults like strings.
 				validateOptsStr = fmt.Sprintf(" [(gotya_default) = %q]", *n.Default)
 			} else {
 				validateOptsStr = "" // No protovalidate options for enum types natively
-            }
+			}
 		} else {
 			protoType = mapYANGTypeToProto(n.Type.Name)
 		}

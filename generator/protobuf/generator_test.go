@@ -85,7 +85,7 @@ module test-module {
 	assert.Contains(t, out, "import \"google/protobuf/descriptor.proto\";")
 	assert.Contains(t, out, "extend google.protobuf.FieldOptions {")
 	assert.Contains(t, out, "string gotya_default = 50000;")
-	
+
 	// Assert generated fields with extensions
 	assert.Contains(t, out, "string hostname = 1 [(gotya_default) = \"localhost\"];")
 	assert.Contains(t, out, "repeated Interface interface = 2;")
@@ -115,6 +115,7 @@ module test-module {
 }
 
 func TestProtoGenerator_GenerateDevice(t *testing.T) {
+	t.Parallel()
 	yangSource1 := `
 module test-module-1 {
 	namespace "urn:test1";
@@ -148,23 +149,26 @@ module test-module-2 {
 	require.NoError(t, err)
 
 	gen := protobuf.New(&protobuf.Options{
-		PackageName: "test_pkg",
-		GenerateFakeroot: true,
+		PackageName:           "test_pkg",
+		GenerateFakeroot:      true,
 		GenerateCELValidation: true,
 	})
 	var buf bytes.Buffer
-	err = gen.(*protobuf.ProtoGenerator).GenerateDevice([]*schema.Module{schemaMod1, schemaMod2}, &buf)
+	protoGen, ok := gen.(*protobuf.ProtoGenerator)
+	require.True(t, ok)
+	err = protoGen.GenerateDevice([]*schema.Module{schemaMod1, schemaMod2}, &buf)
 	require.NoError(t, err)
 
 	out := buf.String()
 	assert.Contains(t, out, "message Device {")
-	assert.Contains(t, out, "TestModule_1 test_module_1 = 1;")
-	assert.Contains(t, out, "TestModule_2 test_module_2 = 2;")
-	assert.Contains(t, out, "message TestModule_1 {")
+	assert.Contains(t, out, "TestModule1 test_module_1 = 1;")
+	assert.Contains(t, out, "TestModule2 test_module_2 = 2;")
+	assert.Contains(t, out, "message TestModule1 {")
 	assert.Contains(t, out, "message Sys {")
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	gen := protobuf.New(nil)
 	assert.NotNil(t, gen)
 
