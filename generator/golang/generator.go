@@ -117,7 +117,6 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 				return fmt.Errorf("write err: %w", err)
 			}
 
-
 			for _, mod := range modules {
 				hasValid := false
 				for _, node := range mod.Nodes {
@@ -195,7 +194,6 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 				return fmt.Errorf("write err: %w", err)
 			}
 
-
 			var modTopNodes []schema.Node
 			for _, name := range getOrderedChildNames(mod.Nodes) {
 				child := mod.Nodes[name]
@@ -239,22 +237,22 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 				return err
 			}
 			if g.Options.GenerateGetters {
-				if err := g.generateGetters(modStructName, modTopNodes, prefix, treeType, mod.Namespace, w); err != nil {
+				if err := g.generateGetters(modStructName, modTopNodes, prefix, treeType, w); err != nil {
 					return err
 				}
 			}
 			if g.Options.GenerateSetters {
-				if err := g.generateSetters(modStructName, modTopNodes, prefix, treeType, mod.Namespace, w); err != nil {
-					return err
+				if err := g.generateSetters(modStructName, modTopNodes, prefix, treeType, w); err != nil {
+					return fmt.Errorf("generateSetters err: %w", err)
 				}
 			}
 			if g.Options.GeneratePopulateDefault {
-				if err := g.generatePopulateDefault(modStructName, modTopNodes, prefix, treeType, mod.Namespace, w); err != nil {
-					return err
+				if err := g.generatePopulateDefault(modStructName, modTopNodes, prefix, treeType, w); err != nil {
+					return fmt.Errorf("generatePopulateDefault err: %w", err)
 				}
 			}
 			if g.Options.GenerateOrderedMaps {
-				if err := g.generateSorts(modStructName, modTopNodes, prefix, treeType, mod.Namespace, w); err != nil {
+				if err := g.generateSorts(modStructName, modTopNodes, w); err != nil {
 					return err
 				}
 			}
@@ -376,7 +374,7 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 
 	// Generate choice interface + case struct types before the parent struct
 	for _, ch := range validChoices {
-		if err := g.generateChoiceTypes(structName, ch, w, visited, prefix, suffix, namespace, configOnly); err != nil {
+		if err := g.generateChoiceTypes(structName, ch, w, prefix, suffix, namespace, configOnly); err != nil {
 			return err
 		}
 	}
@@ -394,7 +392,6 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 	if _, err := fmt.Fprintf(w, "type %s struct {\n", structName); err != nil {
 		return fmt.Errorf("write err: %w", err)
 	}
-
 
 	// Regular (non-choice) fields
 	for _, child := range validNonChoiceNodes {
@@ -418,10 +415,10 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 
 	// Generate custom MarshalJSON/UnmarshalJSON if there are choices
 	if len(validChoices) > 0 {
-		if err := g.generateChoiceMarshalJSON(structName, validNonChoiceNodes, validChoices, w, prefix, suffix, namespace); err != nil {
+		if err := g.generateChoiceMarshalJSON(structName, validChoices, w); err != nil {
 			return err
 		}
-		if err := g.generateChoiceUnmarshalJSON(structName, validNonChoiceNodes, validChoices, w, prefix, suffix, namespace); err != nil {
+		if err := g.generateChoiceUnmarshalJSON(structName, validChoices, w); err != nil {
 			return err
 		}
 	}
@@ -431,22 +428,22 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 		return err
 	}
 	if g.Options.GenerateGetters {
-		if err := g.generateGetters(structName, validNonChoiceNodes, prefix, suffix, namespace, w); err != nil {
-			return err
+		if err := g.generateGetters(structName, validNonChoiceNodes, prefix, suffix, w); err != nil {
+			return fmt.Errorf("generateGetters err: %w", err)
 		}
 	}
 	if g.Options.GenerateSetters {
-		if err := g.generateSetters(structName, validNonChoiceNodes, prefix, suffix, namespace, w); err != nil {
-			return err
+		if err := g.generateSetters(structName, validNonChoiceNodes, prefix, suffix, w); err != nil {
+			return fmt.Errorf("generateSetters err: %w", err)
 		}
 	}
 	if g.Options.GeneratePopulateDefault {
-		if err := g.generatePopulateDefault(structName, validNonChoiceNodes, prefix, suffix, namespace, w); err != nil {
-			return err
+		if err := g.generatePopulateDefault(structName, validNonChoiceNodes, prefix, suffix, w); err != nil {
+			return fmt.Errorf("generatePopulateDefault err: %w", err)
 		}
 	}
 	if g.Options.GenerateOrderedMaps {
-		if err := g.generateSorts(structName, validNonChoiceNodes, prefix, suffix, namespace, w); err != nil {
+		if err := g.generateSorts(structName, validNonChoiceNodes, w); err != nil {
 			return err
 		}
 	}
@@ -517,7 +514,7 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 	if namespace != "" {
 		xmlTag = fmt.Sprintf(" xml:\"%s %s,omitempty\"", namespace, node.Name())
 	}
-	
+
 	moduleName := node.GetBase().ModuleName
 	yangTag := fmt.Sprintf(" yang:\"%s:%s\"", moduleName, node.Name())
 
@@ -968,55 +965,18 @@ func buildLengthCondition(valExpr, yangType string, lengths []string) string {
 	if yangType == "binary" {
 		lengthFunc = "len(" + valExpr + ")"
 	}
-	var conditions []string
-	for _, l := range lengths {
-		var partConds []string
-		for p := range strings.SplitSeq(l, "|") {
-			p = strings.TrimSpace(p)
-			if strings.Contains(p, "..") {
-				bounds := strings.Split(p, "..")
-				minStr := strings.TrimSpace(bounds[0])
-				maxStr := strings.TrimSpace(bounds[1])
-				var minCond, maxCond string
-				if minStr != "min" && minStr != "max" {
-					minCond = fmt.Sprintf("%s >= %s", lengthFunc, minStr)
-				}
-				if maxStr != "max" && maxStr != "min" {
-					maxCond = fmt.Sprintf("%s <= %s", lengthFunc, maxStr)
-				}
-				if minCond != "" && maxCond != "" {
-					partConds = append(partConds, fmt.Sprintf("%s && %s", minCond, maxCond))
-				} else if minCond != "" {
-					partConds = append(partConds, minCond)
-				} else if maxCond != "" {
-					partConds = append(partConds, maxCond)
-				}
-			} else {
-				if p != "min" && p != "max" {
-					partConds = append(partConds, fmt.Sprintf("%s == %s", lengthFunc, p))
-				}
-			}
-		}
-		if len(partConds) > 0 {
-			conditions = append(conditions, strings.Join(partConds, " || "))
-		}
-	}
-	if len(conditions) == 0 {
-		return ""
-	}
-	if len(conditions) > 1 {
-		for i, c := range conditions {
-			conditions[i] = fmt.Sprintf("(%s)", c)
-		}
-	}
-	return strings.Join(conditions, " && ")
+	return buildBoundsCondition(lengthFunc, lengths)
 }
 
 func buildRangeCondition(valExpr string, ranges []string) string {
+	return buildBoundsCondition(valExpr, ranges)
+}
+
+func buildBoundsCondition(valExpr string, boundsList []string) string {
 	var conditions []string
-	for _, r := range ranges {
+	for _, b := range boundsList {
 		var partConds []string
-		for p := range strings.SplitSeq(r, "|") {
+		for p := range strings.SplitSeq(b, "|") {
 			p = strings.TrimSpace(p)
 			if strings.Contains(p, "..") {
 				bounds := strings.Split(p, "..")
@@ -1058,15 +1018,15 @@ func buildRangeCondition(valExpr string, ranges []string) string {
 }
 
 // generateGetters generates safe nil-checking accessor methods for struct fields.
-func (g *GoGenerator) generateGetters(structName string, nodes []schema.Node, prefix, suffix, namespace string, w io.Writer) error {
+func (g *GoGenerator) generateGetters(structName string, nodes []schema.Node, prefix, suffix string, w io.Writer) error {
 	for _, node := range nodes {
 		fieldName := toCamelCaseTitle(node.Name())
 		if fieldName == "Validate" {
 			fieldName = "ValidateField"
 		}
-		
+
 		goType, isPtr, isContainer := g.resolveFieldTypeInfo(node, prefix, suffix)
-		
+
 		// If it's a container or list, we return the pointer/slice/map directly.
 		// If it's a primitive leaf pointer, we return the value type.
 		returnType := goType
@@ -1133,15 +1093,15 @@ func (g *GoGenerator) resolveFieldTypeInfo(node schema.Node, prefix, suffix stri
 }
 
 // generateSetters generates setter methods for struct fields.
-func (g *GoGenerator) generateSetters(structName string, nodes []schema.Node, prefix, suffix, namespace string, w io.Writer) error {
+func (g *GoGenerator) generateSetters(structName string, nodes []schema.Node, prefix, suffix string, w io.Writer) error {
 	for _, node := range nodes {
 		fieldName := toCamelCaseTitle(node.Name())
 		if fieldName == "Validate" {
 			fieldName = "ValidateField"
 		}
-		
+
 		goType, isPtr, isContainer := g.resolveFieldTypeInfo(node, prefix, suffix)
-		
+
 		// Setters for pointers (leaves) usually take the base value, and the setter wraps it in a pointer.
 		// For slices, maps, containers, they take the pointer/slice/map directly.
 		argType := goType
@@ -1170,7 +1130,7 @@ func (g *GoGenerator) generateSetters(structName string, nodes []schema.Node, pr
 }
 
 // generatePopulateDefault generates a method that populates nil fields with their YANG default values.
-func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.Node, prefix, suffix, namespace string, w io.Writer) error {
+func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.Node, prefix, suffix string, w io.Writer) error {
 	var body bytes.Buffer
 	hasDefaults := false
 
@@ -1179,24 +1139,25 @@ func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.
 		if fieldName == "Validate" {
 			fieldName = "ValidateField"
 		}
-		
+
 		switch n := node.(type) {
 		case *schema.Leaf:
 			if n.Default != nil {
 				goType, _, _ := g.resolveFieldTypeInfo(node, prefix, suffix)
 				baseType := strings.TrimPrefix(goType, "*")
-				
+
 				// parse the default string into the go type
 				if strings.Contains(baseType, "Union") {
 					continue
 				}
 
 				valStr := ""
-				if baseType == "string" {
+				switch baseType {
+				case "string":
 					valStr = fmt.Sprintf(`"%s"`, *n.Default)
-				} else if baseType == "bool" {
+				case "bool":
 					valStr = *n.Default
-				} else {
+				default:
 					valStr = fmt.Sprintf("%s(%s)", baseType, *n.Default)
 				}
 
@@ -1218,7 +1179,7 @@ func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.
 }
 
 // generateSorts generates methods to state if a list or leaf-list is ordered, and by what semantics.
-func (g *GoGenerator) generateSorts(structName string, nodes []schema.Node, prefix, suffix, namespace string, w io.Writer) error {
+func (g *GoGenerator) generateSorts(structName string, nodes []schema.Node, w io.Writer) error {
 	for _, node := range nodes {
 		fieldName := toCamelCaseTitle(node.Name())
 		if fieldName == "Validate" {
@@ -1238,7 +1199,7 @@ func (g *GoGenerator) generateSorts(structName string, nodes []schema.Node, pref
 		default:
 			continue
 		}
-		
+
 		isOrdered := orderedBy == "user"
 
 		if _, err := fmt.Fprintf(w, "// IsOrdered%s returns true if the %s slice is ordered-by user.\n", fieldName, fieldName); err != nil {
@@ -1448,24 +1409,8 @@ func (g *GoGenerator) generateTypedef(typeName, baseGoType string, w io.Writer) 
 	return nil
 }
 
-// getFlatChoiceDataNodes collects all leaf-level data nodes from valid choices for validation.
-func getFlatChoiceDataNodes(choices []*schema.Choice, configOnly bool, g *GoGenerator) []schema.Node {
-	var result []schema.Node
-	for _, ch := range choices {
-		for _, caseName := range getOrderedChildNames(ch.Children) {
-			caseNode := ch.Children[caseName]
-			for _, n := range getFlatDataNodes(caseNode.GetChildren()) {
-				if g.hasValidNodes(n, configOnly) {
-					result = append(result, n)
-				}
-			}
-		}
-	}
-	return result
-}
-
 // generateChoiceTypes generates the interface and case structs for a YANG choice.
-func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Choice, w io.Writer, visited map[string]bool, prefix, suffix, namespace string, configOnly bool) error {
+func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Choice, w io.Writer, prefix, suffix, namespace string, configOnly bool) error {
 	choiceIface := choiceGoTypeName(parentStructName, ch.Name())
 
 	// Interface
@@ -1511,22 +1456,9 @@ func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Ch
 	return nil
 }
 
-// choiceCaseInfo holds metadata about a choice case for JSON generation.
-type choiceCaseInfo struct {
-	caseTypeName string
-	fields       []caseFieldInfo
-}
-
-// caseFieldInfo holds the JSON key and Go field name for a case field.
-type caseFieldInfo struct {
-	jsonKey   string
-	fieldName string
-	goType    string
-}
-
 // generateChoiceMarshalJSON generates a custom MarshalJSON for structs with choice fields.
 // It inlines the active case's fields alongside the struct's own fields.
-func (g *GoGenerator) generateChoiceMarshalJSON(structName string, regularNodes []schema.Node, choices []*schema.Choice, w io.Writer, prefix, suffix, namespace string) error {
+func (g *GoGenerator) generateChoiceMarshalJSON(structName string, choices []*schema.Choice, w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "// MarshalJSON implements json.Marshaler for %s.\n// Inlines choice case fields into the parent JSON object.\nfunc (s *%s) MarshalJSON() ([]byte, error) {\n", structName, structName); err != nil {
 		return err
 	}
@@ -1557,7 +1489,7 @@ func (g *GoGenerator) generateChoiceMarshalJSON(structName string, regularNodes 
 
 // generateChoiceUnmarshalJSON generates a custom UnmarshalJSON for structs with choice fields.
 // It detects the active case by checking which JSON keys are present.
-func (g *GoGenerator) generateChoiceUnmarshalJSON(structName string, regularNodes []schema.Node, choices []*schema.Choice, w io.Writer, prefix, suffix, namespace string) error {
+func (g *GoGenerator) generateChoiceUnmarshalJSON(structName string, choices []*schema.Choice, w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "// UnmarshalJSON implements json.Unmarshaler for %s.\n// Detects the active choice case by JSON key presence.\nfunc (s *%s) UnmarshalJSON(data []byte) error {\n", structName, structName); err != nil {
 		return err
 	}
