@@ -16,11 +16,11 @@ type EmptyType struct{}
 
 // SimpleLeaf simulates a container with basic leaf types.
 type SimpleLeaf struct {
-	Name    *string  `json:"name,omitempty" yang:"test-module:name"`
-	Counter *int64   `json:"counter,omitempty" yang:"test-module:counter"`
-	BigVal  *uint64  `json:"big-val,omitempty" yang:"test-module:big-val"`
-	Active  *bool    `json:"active,omitempty" yang:"test-module:active"`
-	Rate    *float64 `json:"rate,omitempty" yang:"test-module:rate"`
+	Name    *string    `json:"name,omitempty" yang:"test-module:name"`
+	Counter *int64     `json:"counter,omitempty" yang:"test-module:counter"`
+	BigVal  *uint64    `json:"big-val,omitempty" yang:"test-module:big-val"`
+	Active  *bool      `json:"active,omitempty" yang:"test-module:active"`
+	Rate    *float64   `json:"rate,omitempty" yang:"test-module:rate"`
 	Marker  *EmptyType `json:"marker,omitempty" yang:"test-module:marker"`
 }
 
@@ -46,14 +46,15 @@ type ListParent struct {
 	Entries []*ListEntry `json:"entries,omitempty" yang:"test-module:entries"`
 }
 
-func ptrStr(s string) *string     { return &s }
-func ptrInt64(n int64) *int64     { return &n }
-func ptrUint64(n uint64) *uint64  { return &n }
-func ptrBool(b bool) *bool        { return &b }
+func ptrStr(s string) *string       { return &s }
+func ptrInt64(n int64) *int64       { return &n }
+func ptrUint64(n uint64) *uint64    { return &n }
+func ptrBool(b bool) *bool          { return &b }
 func ptrFloat64(f float64) *float64 { return &f }
-func ptrInt32(n int32) *int32     { return &n }
+func ptrInt32(n int32) *int32       { return &n }
 
 func TestEncode(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    interface{}
@@ -120,6 +121,7 @@ func TestEncode(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := rfc7951.Encode(tc.input)
 			require.NoError(t, err)
 
@@ -138,6 +140,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -193,6 +196,7 @@ func TestDecode(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			err := rfc7951.Decode([]byte(tc.input), tc.target)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, tc.target)
@@ -201,6 +205,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
+	t.Parallel()
 	original := SimpleLeaf{
 		Name:    ptrStr("interface1"),
 		Counter: ptrInt64(-42),

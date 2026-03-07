@@ -33,9 +33,9 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 			continue
 		}
 
-		path := filepath.Join(yangsDir, file.Name())
-		content, err := os.ReadFile(path)
-		require.NoError(t, err)
+		cleanPath := filepath.Clean(filepath.Join(yangsDir, file.Name()))
+		content, readErr := os.ReadFile(cleanPath)
+		require.NoError(t, readErr)
 
 		l := lexer.New(string(content))
 		p := parser.New(l)
@@ -45,9 +45,9 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 			continue
 		}
 
-		schemaMod, err := comp.Compile(astMod)
-		if err != nil {
-			fmt.Printf("Module %s compiled with errors: %v\n", file.Name(), err)
+		schemaMod, compErr := comp.Compile(astMod)
+		if compErr != nil {
+			fmt.Printf("Module %s compiled with errors: %v\n", file.Name(), compErr)
 		}
 		if schemaMod != nil {
 			modules = append(modules, schemaMod)
@@ -67,11 +67,11 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 	assert.Contains(t, out, "message Device {")
 
 	outDir := filepath.Join("..", "..", "test", "out")
-	err = os.MkdirAll(outDir, 0755)
+	err = os.MkdirAll(outDir, 0750)
 	require.NoError(t, err)
 
 	outPath := filepath.Join(outDir, "device.proto")
-	err = os.WriteFile(outPath, []byte(out), 0644)
+	err = os.WriteFile(outPath, []byte(out), 0600)
 	require.NoError(t, err)
 
 	t.Logf("Proto Device struct successfully written to %s", outPath)

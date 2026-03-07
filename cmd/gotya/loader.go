@@ -1,3 +1,4 @@
+// Package main provides the gotya CLI tool and its loading utilities.
 package main
 
 import (
@@ -61,9 +62,10 @@ OuterLoop:
 		return nil, fmt.Errorf("module %s not found in provided paths", name)
 	}
 
-	content, err := os.ReadFile(targetPath)
+	cleanPath := filepath.Clean(targetPath)
+	content, err := os.ReadFile(cleanPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file %s: %w", cleanPath, err)
 	}
 
 	lex := lexer.New(string(content))
@@ -102,5 +104,9 @@ func (l *DirectoryLoader) Load(name string) (*schema.Module, error) {
 		}
 	}
 
-	return schemaMod, err
+	if err != nil {
+		return schemaMod, fmt.Errorf("compile: %w", err)
+	}
+
+	return schemaMod, nil
 }

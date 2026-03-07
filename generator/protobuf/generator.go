@@ -11,6 +11,7 @@ import (
 	"github.com/gotya/gotya/schema"
 )
 
+// Options holds configuration for the protobuf generator.
 type Options struct {
 	PackageName             string
 	RootName                string
@@ -84,7 +85,7 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 			modMsgName := toCamelCaseTitle(mod.Name)
 			fieldName := convertToSnakeCase(mod.Name)
 			if _, err := fmt.Fprintf(w, "\t%s %s = %d;\n", modMsgName, fieldName, fieldIndex); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 			fieldIndex++
 		}
@@ -179,7 +180,7 @@ func (g *ProtoGenerator) generateMessage(name string, description *string, child
 		descLines := strings.Split(strings.TrimSpace(*description), "\n")
 		for _, line := range descLines {
 			if _, err := fmt.Fprintf(w, "// %s\n", strings.TrimSpace(line)); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -275,7 +276,7 @@ func (g *ProtoGenerator) generateField(node schema.Node, w io.Writer, fieldIndex
 		descLines := strings.Split(strings.TrimSpace(*node.GetBase().Description), "\n")
 		for _, line := range descLines {
 			if _, err := fmt.Fprintf(w, "\t// %s\n", strings.TrimSpace(line)); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}

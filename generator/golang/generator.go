@@ -382,7 +382,7 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 	if g.Options.AddAnnotations && description != nil && *description != "" {
 		for line := range strings.SplitSeq(strings.TrimSpace(*description), "\n") {
 			if _, err := fmt.Fprintf(w, "// %s\n", strings.TrimSpace(line)); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -521,7 +521,7 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 	if g.Options.AddAnnotations && node.GetBase().Description != nil && *node.GetBase().Description != "" {
 		for line := range strings.SplitSeq(strings.TrimSpace(*node.GetBase().Description), "\n") {
 			if _, err := fmt.Fprintf(w, "\t// %s\n", strings.TrimSpace(line)); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -934,7 +934,7 @@ func (g *GoGenerator) writeValidationRule(w io.Writer, fieldName, ptrExpr string
 		cond := buildLengthCondition(valExpr, typ.Name, typ.Length)
 		if cond != "" {
 			if _, err := fmt.Fprintf(w, "\tif %s != nil {\n\t\tif !(%s) {\n\t\t\treturn fmt.Errorf(\"%%s length out of range\", %q)\n\t\t}\n\t}\n", ptrExpr, cond, fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -942,7 +942,7 @@ func (g *GoGenerator) writeValidationRule(w io.Writer, fieldName, ptrExpr string
 		cond := buildRangeCondition(valExpr, typ.Range)
 		if cond != "" {
 			if _, err := fmt.Fprintf(w, "\tif %s != nil {\n\t\tif !(%s) {\n\t\t\treturn fmt.Errorf(\"%%s value out of range\", %q)\n\t\t}\n\t}\n", ptrExpr, cond, fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -953,7 +953,7 @@ func (g *GoGenerator) writeValidationRule(w io.Writer, fieldName, ptrExpr string
 		}
 		for _, pat := range typ.Pattern {
 			if _, err := fmt.Fprintf(w, "\tif %s != nil {\n\t\tmatched, _ := regexp.MatchString(%q, %s)\n\t\tif !matched {\n\t\t\treturn fmt.Errorf(\"%%s does not match pattern\", %q)\n\t\t}\n\t}\n", ptrExpr, pat, valStr, fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -1035,27 +1035,27 @@ func (g *GoGenerator) generateGetters(structName string, nodes []schema.Node, pr
 		}
 
 		if _, err := fmt.Fprintf(w, "// Get%s retrieves the value of the field %s from its parent, returning its default or zero value if unset.\n", fieldName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "func (s *%s) Get%s() %s {\n", structName, fieldName, returnType); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 
 		if isPtr && !isContainer {
 			// Union is an interface
 			if strings.Contains(returnType, "Union") {
 				if _, err := fmt.Fprintf(w, "\tif s == nil || s.%s == nil {\n\t\treturn nil\n\t}\n\treturn s.%s\n}\n\n", fieldName, fieldName); err != nil {
-					return err
+					return fmt.Errorf("write err: %w", err)
 				}
 			} else {
 				if _, err := fmt.Fprintf(w, "\tif s == nil || s.%s == nil {\n\t\tvar zero %s\n\t\treturn zero\n\t}\n\treturn *s.%s\n}\n\n", fieldName, returnType, fieldName); err != nil {
-					return err
+					return fmt.Errorf("write err: %w", err)
 				}
 			}
 		} else {
 			// slices, maps, containers -> return directly with nil check
 			if _, err := fmt.Fprintf(w, "\tif s == nil {\n\t\tvar zero %s\n\t\treturn zero\n\t}\n\treturn s.%s\n}\n\n", returnType, fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -1110,19 +1110,19 @@ func (g *GoGenerator) generateSetters(structName string, nodes []schema.Node, pr
 		}
 
 		if _, err := fmt.Fprintf(w, "// Set%s sets the value of the field %s.\n", fieldName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "func (s *%s) Set%s(v %s) {\n", structName, fieldName, argType); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 
 		if isPtr && !isContainer && !strings.Contains(argType, "Union") {
 			if _, err := fmt.Fprintf(w, "\ts.%s = &v\n}\n\n", fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		} else {
 			if _, err := fmt.Fprintf(w, "\ts.%s = v\n}\n\n", fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
@@ -1151,7 +1151,7 @@ func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.
 					continue
 				}
 
-				valStr := ""
+				var valStr string
 				switch baseType {
 				case "string":
 					valStr = fmt.Sprintf(`"%s"`, *n.Default)
@@ -1169,10 +1169,10 @@ func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.
 
 	if hasDefaults {
 		if _, err := fmt.Fprintf(w, "// PopulateDefaults recursively populates nil fields in %s with default values.\n", structName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "func (s *%s) PopulateDefaults() {\n%s}\n\n", structName, body.String()); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 	return nil
@@ -1203,29 +1203,29 @@ func (g *GoGenerator) generateSorts(structName string, nodes []schema.Node, w io
 		isOrdered := orderedBy == "user"
 
 		if _, err := fmt.Fprintf(w, "// IsOrdered%s returns true if the %s slice is ordered-by user.\n", fieldName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "func (s *%s) IsOrdered%s() bool {\n", structName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "\treturn %v\n", isOrdered); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 
 		if _, err := fmt.Fprintf(w, "// Order%s returns the ordered-by semantics of the %s slice.\n", fieldName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "func (s *%s) Order%s() string {\n", structName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "\treturn \"%s\"\n", orderedBy); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 	return nil
@@ -1236,27 +1236,27 @@ func (g *GoGenerator) generateSorts(structName string, nodes []schema.Node, w io
 func (g *GoGenerator) generateBitsType(typeName string, bits []string, w io.Writer) error {
 	// Type declaration
 	if _, err := fmt.Fprintf(w, "// %s represents the YANG bits type with %d bit(s).\ntype %s uint64\n\n", typeName, len(bits), typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Constants using iota
 	if _, err := fmt.Fprintf(w, "const (\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	for i, bit := range bits {
 		constName := typeName + toCamelCaseTitle(bit)
 		if i == 0 {
 			if _, err := fmt.Fprintf(w, "\t%s %s = 1 << iota\n", constName, typeName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		} else {
 			if _, err := fmt.Fprintf(w, "\t%s\n", constName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
 	if _, err := fmt.Fprintf(w, ")\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Lowercase variable name for maps
@@ -1264,60 +1264,60 @@ func (g *GoGenerator) generateBitsType(typeName string, bits []string, w io.Writ
 
 	// Name to value map
 	if _, err := fmt.Fprintf(w, "var %sNameMap = map[string]%s{\n", lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	for _, bit := range bits {
 		constName := typeName + toCamelCaseTitle(bit)
 		if _, err := fmt.Fprintf(w, "\t\"%s\": %s,\n", bit, constName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Value to name map
 	if _, err := fmt.Fprintf(w, "var %sValueMap = map[%s]string{\n", lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	for _, bit := range bits {
 		constName := typeName + toCamelCaseTitle(bit)
 		if _, err := fmt.Fprintf(w, "\t%s: \"%s\",\n", constName, bit); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Has method
 	if _, err := fmt.Fprintf(w, "// Has returns true if the given bit is set.\nfunc (b %s) Has(flag %s) bool { return b&flag != 0 }\n\n", typeName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Set method
 	if _, err := fmt.Fprintf(w, "// Set returns the bits value with the given flag set.\nfunc (b %s) Set(flag %s) %s { return b | flag }\n\n", typeName, typeName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Clear method
 	if _, err := fmt.Fprintf(w, "// Clear returns the bits value with the given flag cleared.\nfunc (b %s) Clear(flag %s) %s { return b &^ flag }\n\n", typeName, typeName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// String method
 	if _, err := fmt.Fprintf(w, "// String returns the space-separated names of all set bits.\nfunc (b %s) String() string {\n\tvar names []string\n\tfor val, name := range %sValueMap {\n\t\tif b&val != 0 {\n\t\t\tnames = append(names, name)\n\t\t}\n\t}\n\treturn strings.Join(names, \" \")\n}\n\n", typeName, lowerName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// MarshalJSON
 	if _, err := fmt.Fprintf(w, "// MarshalJSON implements json.Marshaler for %s.\n// RFC 7951 §6.7: bits are encoded as a space-separated string of set bit names.\nfunc (b %s) MarshalJSON() ([]byte, error) {\n\treturn json.Marshal(b.String())\n}\n\n", typeName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// UnmarshalJSON
 	if _, err := fmt.Fprintf(w, "// UnmarshalJSON implements json.Unmarshaler for %s.\nfunc (b *%s) UnmarshalJSON(data []byte) error {\n\tvar s string\n\tif err := json.Unmarshal(data, &s); err != nil {\n\t\treturn err\n\t}\n\tif s == \"\" {\n\t\t*b = 0\n\t\treturn nil\n\t}\n\tfor name := range strings.SplitSeq(s, \" \") {\n\t\tif val, ok := %sNameMap[name]; ok {\n\t\t\t*b = b.Set(val)\n\t\t} else {\n\t\t\treturn fmt.Errorf(\"unknown bit name %%q for %s\", name)\n\t\t}\n\t}\n\treturn nil\n}\n", typeName, typeName, lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	return nil
@@ -1328,27 +1328,27 @@ func (g *GoGenerator) generateBitsType(typeName string, bits []string, w io.Writ
 func (g *GoGenerator) generateEnumType(typeName string, enums []string, w io.Writer) error {
 	// Type declaration
 	if _, err := fmt.Fprintf(w, "// %s represents the YANG enumeration type with %d value(s).\ntype %s uint64\n\n", typeName, len(enums), typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Constants using iota (sequential, not bit-shifted)
 	if _, err := fmt.Fprintf(w, "const (\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	for i, enum := range enums {
 		constName := typeName + toCamelCaseTitle(enum)
 		if i == 0 {
 			if _, err := fmt.Fprintf(w, "\t%s %s = iota\n", constName, typeName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		} else {
 			if _, err := fmt.Fprintf(w, "\t%s\n", constName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
 	if _, err := fmt.Fprintf(w, ")\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Lowercase variable name for maps
@@ -1356,45 +1356,45 @@ func (g *GoGenerator) generateEnumType(typeName string, enums []string, w io.Wri
 
 	// Name to value map
 	if _, err := fmt.Fprintf(w, "var %sNameMap = map[string]%s{\n", lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	for _, enum := range enums {
 		constName := typeName + toCamelCaseTitle(enum)
 		if _, err := fmt.Fprintf(w, "\t\"%s\": %s,\n", enum, constName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Value to name map
 	if _, err := fmt.Fprintf(w, "var %sValueMap = map[%s]string{\n", lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	for _, enum := range enums {
 		constName := typeName + toCamelCaseTitle(enum)
 		if _, err := fmt.Fprintf(w, "\t%s: \"%s\",\n", constName, enum); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// String method
 	if _, err := fmt.Fprintf(w, "// String returns the YANG name of the enum value.\nfunc (e %s) String() string {\n\tif name, ok := %sValueMap[e]; ok {\n\t\treturn name\n\t}\n\treturn fmt.Sprintf(\"%s(%%d)\", uint64(e))\n}\n\n", typeName, lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// MarshalJSON — enum → string value
 	if _, err := fmt.Fprintf(w, "// MarshalJSON implements json.Marshaler for %s.\nfunc (e %s) MarshalJSON() ([]byte, error) {\n\treturn json.Marshal(e.String())\n}\n\n", typeName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// UnmarshalJSON — string → enum
 	if _, err := fmt.Fprintf(w, "// UnmarshalJSON implements json.Unmarshaler for %s.\nfunc (e *%s) UnmarshalJSON(data []byte) error {\n\tvar s string\n\tif err := json.Unmarshal(data, &s); err != nil {\n\t\treturn err\n\t}\n\tif val, ok := %sNameMap[s]; ok {\n\t\t*e = val\n\t\treturn nil\n\t}\n\treturn fmt.Errorf(\"unknown enum value %%q for %s\", s)\n}\n\n", typeName, typeName, lowerName, typeName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	return nil
@@ -1404,7 +1404,7 @@ func (g *GoGenerator) generateEnumType(typeName string, enums []string, w io.Wri
 // that wraps a scalar Go base type (e.g., type PortNumber uint16).
 func (g *GoGenerator) generateTypedef(typeName, baseGoType string, w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "// %s is a named Go type for the YANG typedef.\ntype %s %s\n\n", typeName, typeName, baseGoType); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 	return nil
 }
@@ -1415,7 +1415,7 @@ func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Ch
 
 	// Interface
 	if _, err := fmt.Fprintf(w, "// %s is the interface for YANG choice \"%s\".\ntype %s interface {\n\tis%s()\n}\n\n", choiceIface, ch.Name(), choiceIface, choiceIface); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Generate a case struct for each case
@@ -1436,7 +1436,7 @@ func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Ch
 
 		// Case struct
 		if _, err := fmt.Fprintf(w, "// %s represents case \"%s\" of choice \"%s\".\ntype %s struct {\n", caseType, caseName, ch.Name(), caseType); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 		for _, child := range validChildren {
 			if err := g.generateField(child, w, prefix, suffix, namespace); err != nil {
@@ -1444,12 +1444,12 @@ func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Ch
 			}
 		}
 		if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 
 		// Marker method
 		if _, err := fmt.Fprintf(w, "func (%s) is%s() {}\n\n", caseType, choiceIface); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 
@@ -1460,28 +1460,28 @@ func (g *GoGenerator) generateChoiceTypes(parentStructName string, ch *schema.Ch
 // It inlines the active case's fields alongside the struct's own fields.
 func (g *GoGenerator) generateChoiceMarshalJSON(structName string, choices []*schema.Choice, w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "// MarshalJSON implements json.Marshaler for %s.\n// Inlines choice case fields into the parent JSON object.\nfunc (s *%s) MarshalJSON() ([]byte, error) {\n", structName, structName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Build an aux struct with regular fields only
 	if _, err := fmt.Fprintf(w, "\ttype plain %s\n\tdata, err := json.Marshal((*plain)(s))\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n", structName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// For each choice, marshal the active case and merge
 	if _, err := fmt.Fprintf(w, "\t// Start with the base object\n\tvar base map[string]json.RawMessage\n\tif err := json.Unmarshal(data, &base); err != nil {\n\t\treturn nil, err\n\t}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	for _, ch := range choices {
 		fieldName := toCamelCaseTitle(ch.Name())
 		if _, err := fmt.Fprintf(w, "\tif s.%s != nil {\n\t\tchoiceData, err := json.Marshal(s.%s)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tvar choiceFields map[string]json.RawMessage\n\t\tif err := json.Unmarshal(choiceData, &choiceFields); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tfor k, v := range choiceFields {\n\t\t\tbase[k] = v\n\t\t}\n\t}\n\n", fieldName, fieldName); err != nil {
-			return err
+			return fmt.Errorf("write err: %w", err)
 		}
 	}
 
 	if _, err := fmt.Fprintf(w, "\treturn json.Marshal(base)\n}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	return nil
@@ -1491,17 +1491,17 @@ func (g *GoGenerator) generateChoiceMarshalJSON(structName string, choices []*sc
 // It detects the active case by checking which JSON keys are present.
 func (g *GoGenerator) generateChoiceUnmarshalJSON(structName string, choices []*schema.Choice, w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "// UnmarshalJSON implements json.Unmarshaler for %s.\n// Detects the active choice case by JSON key presence.\nfunc (s *%s) UnmarshalJSON(data []byte) error {\n", structName, structName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// Unmarshal regular fields via alias
 	if _, err := fmt.Fprintf(w, "\ttype plain %s\n\tif err := json.Unmarshal(data, (*plain)(s)); err != nil {\n\t\treturn err\n\t}\n\n", structName); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	// For each choice, probe keys to detect the active case
 	if _, err := fmt.Fprintf(w, "\tvar raw map[string]json.RawMessage\n\tif err := json.Unmarshal(data, &raw); err != nil {\n\t\treturn err\n\t}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	for _, ch := range choices {
@@ -1531,26 +1531,26 @@ func (g *GoGenerator) generateChoiceUnmarshalJSON(structName string, choices []*
 			}
 
 			if _, err := fmt.Fprintf(w, "\t// Detect case \"%s\"\n", caseName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 
 			// Check first key as indicator
 			for i, key := range keys {
 				if i == 0 {
 					if _, err := fmt.Fprintf(w, "\tif _, ok := raw[\"%s\"]; ok {\n", key); err != nil {
-						return err
+						return fmt.Errorf("write err: %w", err)
 					}
 				}
 			}
 
 			if _, err := fmt.Fprintf(w, "\t\tvar c %s\n\t\tif err := json.Unmarshal(data, &c); err != nil {\n\t\t\treturn err\n\t\t}\n\t\ts.%s = &c\n\t}\n", caseType, fieldName); err != nil {
-				return err
+				return fmt.Errorf("write err: %w", err)
 			}
 		}
 	}
 
 	if _, err := fmt.Fprintf(w, "\treturn nil\n}\n\n"); err != nil {
-		return err
+		return fmt.Errorf("write err: %w", err)
 	}
 
 	return nil

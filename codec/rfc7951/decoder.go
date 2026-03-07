@@ -2,6 +2,7 @@ package rfc7951
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -17,7 +18,7 @@ import (
 func Decode(data []byte, v interface{}) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("rfc7951 decode: target must be a non-nil pointer")
+		return errors.New("rfc7951 decode: target must be a non-nil pointer")
 	}
 
 	var raw interface{}
@@ -72,7 +73,7 @@ func decodeStruct(src interface{}, dst reflect.Value) error {
 
 	// Build a lookup from yang node name → field index
 	yangIndex := make(map[string]int)
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		if !field.IsExported() {
 			continue
@@ -81,8 +82,8 @@ func decodeStruct(src interface{}, dst reflect.Value) error {
 		if yangTag != "" {
 			parts := strings.SplitN(yangTag, ":", 2)
 			if len(parts) == 2 {
-				yangIndex[parts[1]] = i               // match by bare name
-				yangIndex[yangTag] = i                // match by module:name
+				yangIndex[parts[1]] = i // match by bare name
+				yangIndex[yangTag] = i  // match by module:name
 			}
 		}
 		// Also index by json tag
@@ -96,13 +97,11 @@ func decodeStruct(src interface{}, dst reflect.Value) error {
 	}
 
 	for key, val := range srcMap {
-		// Strip module prefix for lookup: "ietf-interfaces:interfaces" → "interfaces"
-		lookupKey := key
 		fieldIdx, found := yangIndex[key]
 		if !found {
 			// Try stripping the module prefix
 			if idx := strings.Index(key, ":"); idx != -1 {
-				lookupKey = key[idx+1:]
+				lookupKey := key[idx+1:]
 				fieldIdx, found = yangIndex[lookupKey]
 			}
 		}

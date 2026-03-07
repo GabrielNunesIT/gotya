@@ -401,10 +401,10 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		rpcNode.Musts = musts
 		c.parseChildren(rpcNode, stmt.SubStatements(), nil)
 		if rpcNode.GetChildren()["input"] == nil {
-			rpcNode.AddChild(schema.NewInput())
+			_ = rpcNode.AddChild(schema.NewInput())
 		}
 		if rpcNode.GetChildren()["output"] == nil {
-			rpcNode.AddChild(schema.NewOutput())
+			_ = rpcNode.AddChild(schema.NewOutput())
 		}
 		node = rpcNode
 	case "action":
@@ -412,10 +412,10 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		actionNode.Musts = musts
 		c.parseChildren(actionNode, stmt.SubStatements(), nil)
 		if actionNode.GetChildren()["input"] == nil {
-			actionNode.AddChild(schema.NewInput())
+			_ = actionNode.AddChild(schema.NewInput())
 		}
 		if actionNode.GetChildren()["output"] == nil {
-			actionNode.AddChild(schema.NewOutput())
+			_ = actionNode.AddChild(schema.NewOutput())
 		}
 		node = actionNode
 	case "notification":

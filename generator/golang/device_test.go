@@ -31,7 +31,7 @@ func (l *testLoader) LoadAST(name string) (*ast.Module, error) {
 
 	files, err := os.ReadDir(l.dir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read dir %s: %w", l.dir, err)
 	}
 
 	var target string
@@ -46,9 +46,10 @@ func (l *testLoader) LoadAST(name string) (*ast.Module, error) {
 		return nil, fmt.Errorf("module %s not found in %s", name, l.dir)
 	}
 
-	content, err := os.ReadFile(target)
+	cleanTarget := filepath.Clean(target)
+	content, err := os.ReadFile(cleanTarget)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file %s: %w", cleanTarget, err)
 	}
 
 	lex := lexer.New(string(content))
@@ -86,7 +87,7 @@ func (l *testLoader) Load(name string) (*schema.Module, error) {
 	}
 
 	if err != nil {
-		return schemaMod, err
+		return schemaMod, fmt.Errorf("compile: %w", err)
 	}
 
 	return schemaMod, nil
@@ -120,9 +121,9 @@ func TestGenerateDeviceFromTestAssets(t *testing.T) {
 			modName = strings.TrimSuffix(modName, ".yang")
 		}
 
-		astMod, err := loader.LoadAST(modName)
-		if err != nil {
-			fmt.Printf("Failed to load AST for %s: %v\n", modName, err)
+		astMod, astErr := loader.LoadAST(modName)
+		if astErr != nil {
+			fmt.Printf("Failed to load AST for %s: %v\n", modName, astErr)
 			continue
 		}
 
@@ -131,9 +132,9 @@ func TestGenerateDeviceFromTestAssets(t *testing.T) {
 		}
 
 		fmt.Printf("Loading module %s\n", modName)
-		schemaMod, err := loader.Load(modName)
-		if err != nil {
-			fmt.Printf("Module %s compiled with errors: %v\n", modName, err)
+		schemaMod, loadErr := loader.Load(modName)
+		if loadErr != nil {
+			fmt.Printf("Module %s compiled with errors: %v\n", modName, loadErr)
 		}
 		if schemaMod != nil {
 			modules = append(modules, schemaMod)

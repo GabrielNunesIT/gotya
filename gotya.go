@@ -1,7 +1,10 @@
+// Package gotya provides the public API for the library.
 package gotya
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gotya/gotya/ast"
 	"github.com/gotya/gotya/compiler"
@@ -35,10 +38,11 @@ func Parse(content string) (*ASTModule, error) {
 //
 // Why: Standard use cases revolve around working with local files. This provides
 // a convenient wrapper so users do not have to handle the file I/O boilerplate themselves.
-func ParseFile(path string) (*ASTModule, error) {
-	content, err := os.ReadFile(path)
+func ParseFile(path string) (*ast.Module, error) {
+	cleanPath := filepath.Clean(path)
+	content, err := os.ReadFile(cleanPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file %s: %w", cleanPath, err)
 	}
 	return Parse(string(content))
 }
@@ -59,7 +63,7 @@ func Compile(astModules []*ASTModule, opts *compiler.Options) ([]*schema.Module,
 	for _, astMod := range astModules {
 		mod, err := comp.Compile(astMod)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("compile module %s: %w", astMod.Argument(), err)
 		}
 		if mod != nil {
 			compiled = append(compiled, mod)

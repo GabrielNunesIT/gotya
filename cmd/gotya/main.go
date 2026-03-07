@@ -104,13 +104,15 @@ func main() {
 
 // generateGo invokes the Golang compiler logic for generating the Device struct
 func generateGo(modules []*schema.Module, outDir, pkgName, rootName string, genFakeroot, skipDep, skipObs, addAnn, genGetters, genSetters, genPopDef, genOrdMaps bool) {
-	outPath := filepath.Join(outDir, "device.go")
+	outPath := filepath.Clean(filepath.Join(outDir, "device.go"))
 	outFile, err := os.Create(outPath)
 	if err != nil {
 		log.Fatalf("Failed to create Go output file %s: %v", outPath, err)
 	}
-	defer outFile.Close()
-	
+	defer func() {
+		_ = outFile.Close()
+	}()
+
 	if pkgName == "" {
 		pkgName = "device"
 	}
@@ -135,12 +137,14 @@ func generateGo(modules []*schema.Module, outDir, pkgName, rootName string, genF
 
 // generateProtobuf invokes the Protobuf compiler logic to emit .proto targets natively
 func generateProtobuf(modules []*schema.Module, outDir, pkgName, rootName string, genFakeroot, skipDep, skipObs, addAnn, genGetters, genSetters, genPopDef, genOrdMaps bool) {
-	outPath := filepath.Join(outDir, "device.proto")
+	outPath := filepath.Clean(filepath.Join(outDir, "device.proto"))
 	outFile, err := os.Create(outPath)
 	if err != nil {
 		log.Fatalf("Failed to create Protobuf output file %s: %v", outPath, err)
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	if pkgName == "" {
 		pkgName = "gotya.device"

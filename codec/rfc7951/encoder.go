@@ -4,10 +4,15 @@ package rfc7951
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
+
+// ErrSkipValue is a sentinel error to indicate that a field, slice, or map should be omitted.
+var ErrSkipValue = errors.New("skip value")
 
 // Encode marshals a gotya-generated Go struct into RFC 7951 compliant JSON.
 //
@@ -19,10 +24,14 @@ import (
 //   - bool, numeric, and string values follow standard JSON encoding.
 func Encode(v interface{}) ([]byte, error) {
 	result, err := encodeValue(reflect.ValueOf(v), "")
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrSkipValue) {
 		return nil, fmt.Errorf("rfc7951 encode: %w", err)
 	}
-	return json.Marshal(result)
+	bytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("json marshal: %w", err)
+	}
+	return bytes, nil
 }
 
 // encodeValue recursively encodes a reflect.Value into an RFC 7951 compatible
@@ -32,7 +41,7 @@ func encodeValue(v reflect.Value, parentModule string) (interface{}, error) {
 	// Dereference pointers
 	for v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			return nil, nil
+			return nil, ErrSkipValue
 		}
 		v = v.Elem()
 	}
@@ -46,10 +55,10 @@ func encodeValue(v reflect.Value, parentModule string) (interface{}, error) {
 		return encodeMap(v, parentModule)
 	case reflect.Int64:
 		// RFC 7951 §6.1: int64 encoded as string
-		return fmt.Sprintf("%d", v.Int()), nil
+		return strconv.FormatInt(v.Int(), 10), nil
 	case reflect.Uint64:
 		// RFC 7951 §6.1: uint64 encoded as string
-		return fmt.Sprintf("%d", v.Uint()), nil
+		return strconv.FormatUint(v.Uint(), 10), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
 		return v.Int(), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
@@ -75,7 +84,7 @@ func encodeStruct(v reflect.Value, parentModule string) (interface{}, error) {
 	t := v.Type()
 	result := make(map[string]interface{})
 
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		fieldVal := v.Field(i)
 
@@ -100,6 +109,9 @@ func encodeStruct(v reflect.Value, parentModule string) (interface{}, error) {
 			name := strings.Split(jsonTag, ",")[0]
 			encoded, err := encodeValue(fieldVal, parentModule)
 			if err != nil {
+				if errors.Is(err, ErrSkipValue) {
+					continue
+				}
 				return nil, fmt.Errorf("field %s: %w", field.Name, err)
 			}
 			if encoded != nil {
@@ -124,6 +136,9 @@ func encodeStruct(v reflect.Value, parentModule string) (interface{}, error) {
 
 		encoded, err := encodeValue(fieldVal, fieldModule)
 		if err != nil {
+			if errors.Is(err, ErrSkipValue) {
+				continue
+			}
 			return nil, fmt.Errorf("field %s: %w", field.Name, err)
 		}
 		if encoded != nil {
@@ -132,7 +147,7 @@ func encodeStruct(v reflect.Value, parentModule string) (interface{}, error) {
 	}
 
 	if len(result) == 0 {
-		return nil, nil
+		return nil, ErrSkipValue
 	}
 	return result, nil
 }
@@ -140,13 +155,16 @@ func encodeStruct(v reflect.Value, parentModule string) (interface{}, error) {
 // encodeSlice encodes a Go slice into a JSON array.
 func encodeSlice(v reflect.Value, parentModule string) (interface{}, error) {
 	if v.IsNil() || v.Len() == 0 {
-		return nil, nil
+		return nil, ErrSkipValue
 	}
 
 	result := make([]interface{}, 0, v.Len())
-	for i := 0; i < v.Len(); i++ {
+	for i := range v.Len() {
 		encoded, err := encodeValue(v.Index(i), parentModule)
 		if err != nil {
+			if errors.Is(err, ErrSkipValue) {
+				continue
+			}
 			return nil, fmt.Errorf("index %d: %w", i, err)
 		}
 		result = append(result, encoded)
@@ -157,13 +175,16 @@ func encodeSlice(v reflect.Value, parentModule string) (interface{}, error) {
 // encodeMap encodes a Go map into a JSON array of objects (for YANG lists keyed by string).
 func encodeMap(v reflect.Value, parentModule string) (interface{}, error) {
 	if v.IsNil() || v.Len() == 0 {
-		return nil, nil
+		return nil, ErrSkipValue
 	}
 
 	result := make([]interface{}, 0, v.Len())
 	for _, key := range v.MapKeys() {
 		encoded, err := encodeValue(v.MapIndex(key), parentModule)
 		if err != nil {
+			if errors.Is(err, ErrSkipValue) {
+				continue
+			}
 			return nil, fmt.Errorf("map key %v: %w", key, err)
 		}
 		if encoded != nil {
