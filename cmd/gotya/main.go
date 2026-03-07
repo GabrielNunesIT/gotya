@@ -35,7 +35,8 @@ func main() {
 	protoCELFlag := flag.Bool("proto_cel", false, "If set to true, emit bufbuild/protovalidate CEL constraints for protobuf")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <yang files...>\n\n", os.Args[0])
+		//nolint:gosec // Usage text is inherently safe from command injection.
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <yang files...>\n\n", filepath.Clean(os.Args[0]))
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}

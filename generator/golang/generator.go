@@ -268,6 +268,7 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 	return nil
 }
 
+//nolint:dupl // schema.Leaf and schema.LeafList have identical type definition handling but are distinct schema structs
 func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[string]bool, prefix, suffix, namespace string, configOnly bool) error {
 	switch n := node.(type) {
 	case *schema.Container:
@@ -500,6 +501,7 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 	return nil
 }
 
+//nolint:dupl // leaf and leaf-list share the same type resolution logic
 func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffix, namespace string) error {
 	fieldName := toCamelCaseTitle(node.Name())
 	if fieldName == "Validate" {
@@ -1107,6 +1109,8 @@ func (g *GoGenerator) generateGetters(structName string, nodes []schema.Node, pr
 }
 
 // resolveFieldTypeInfo reconstructs the Go type of a node exactly as it's emitted in the struct fields.
+//
+//nolint:dupl // leaf and leaf-list share the same type resolution logic
 func (g *GoGenerator) resolveFieldTypeInfo(node schema.Node, prefix, suffix string) (goType string, isPtr, isContainer bool) {
 	switch n := node.(type) {
 	case *schema.Leaf:

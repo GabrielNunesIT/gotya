@@ -1,4 +1,6 @@
 // Package ast provides Abstract Syntax Tree node definitions for YANG modules.
+//
+//nolint:revive // package name matches purpose
 package ast
 
 // Node represents a node in the AST.

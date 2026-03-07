@@ -95,7 +95,7 @@ module test-module {
 	assert.Contains(t, out, "bool enabled = 2 [(gotya_default) = \"true\"];")
 	assert.Contains(t, out, "uint32 mtu = 3;")
 	assert.Contains(t, out, "string name = 4;")
-	
+
 	assert.Contains(t, out, "oneof protocol {")
 	assert.Contains(t, out, "option (gotya_oneof_default) = \"http\";")
 	assert.Contains(t, out, "HttpCase http = 5;")

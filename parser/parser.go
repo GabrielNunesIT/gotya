@@ -1,4 +1,6 @@
 // Package parser implements a recursive descent parser for YANG 1.0 and 1.1 modules.
+//
+//nolint:revive // package name matches purpose
 package parser
 
 import (

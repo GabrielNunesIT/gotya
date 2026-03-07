@@ -1,4 +1,6 @@
 // Package token provides the definitions for lexical tokens in the gotya YANG parser.
+//
+//nolint:revive // package name matches purpose
 package token
 
 // Type represents the type of a token.
