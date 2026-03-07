@@ -2,6 +2,7 @@ package golang_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/gotya/gotya/compiler"
@@ -83,18 +84,36 @@ module test-module {
 
 	// Verify System container
 	assert.Contains(t, out, "type TestModuleSystem struct {\n")
-	assert.Contains(t, out, "\tHostname *string `json:\"hostname,omitempty\" xml:\"urn:test hostname,omitempty\"`\n")
-	assert.Contains(t, out, "\tInterface []*TestModuleInterfaceEntry `json:\"interface,omitempty\" xml:\"urn:test interface,omitempty\"`\n")
-	assert.Contains(t, out, "\tPort *uint16 `json:\"port,omitempty\" xml:\"urn:test port,omitempty\"`\n")
-	assert.Contains(t, out, "\tSecurePort *uint16 `json:\"secure-port,omitempty\" xml:\"urn:test secure-port,omitempty\"`\n")
+	assert.Contains(t, out, "\tHostname *string `json:\"hostname,omitempty\" xml:\"urn:test hostname,omitempty\" yang:\"test-module:hostname\"`\n")
+	assert.Contains(t, out, "\tInterface []*TestModuleInterfaceEntry `json:\"interface,omitempty\" xml:\"urn:test interface,omitempty\" yang:\"test-module:interface\"`\n")
+	assert.Contains(t, out, "\tPort *uint16 `json:\"port,omitempty\" xml:\"urn:test port,omitempty\" yang:\"test-module:port\"`\n")
+	assert.Contains(t, out, "\tSecurePort *uint16 `json:\"secure-port,omitempty\" xml:\"urn:test secure-port,omitempty\" yang:\"test-module:secure-port\"`\n")
 
 	// Verify Interface list
 	assert.Contains(t, out, "type TestModuleInterfaceEntry struct {\n")
-	assert.Contains(t, out, "\tAliases []*string `json:\"aliases,omitempty\" xml:\"urn:test aliases,omitempty\"`\n")
-	assert.Contains(t, out, "\tEnabled *bool `json:\"enabled,omitempty\" xml:\"urn:test enabled,omitempty\"`\n")
-	assert.Contains(t, out, "\tMtu *uint16 `json:\"mtu,omitempty\" xml:\"urn:test mtu,omitempty\"`\n")
-	assert.Contains(t, out, "\tName *string `json:\"name,omitempty\" xml:\"urn:test name,omitempty\"`\n")
-	assert.Contains(t, out, "\tStatus *string `json:\"status,omitempty\" xml:\"urn:test status,omitempty\"`\n")
+	assert.Contains(t, out, "\tAliases []*string `json:\"aliases,omitempty\" xml:\"urn:test aliases,omitempty\" yang:\"test-module:aliases\"`\n")
+	assert.Contains(t, out, "\tEnabled *bool `json:\"enabled,omitempty\" xml:\"urn:test enabled,omitempty\" yang:\"test-module:enabled\"`\n")
+	assert.Contains(t, out, "\tMtu *uint16 `json:\"mtu,omitempty\" xml:\"urn:test mtu,omitempty\" yang:\"test-module:mtu\"`\n")
+	assert.Contains(t, out, "\tName *string `json:\"name,omitempty\" xml:\"urn:test name,omitempty\" yang:\"test-module:name\"`\n")
+	assert.Contains(t, out, "\tStatus *TestModuleStatusEnum `json:\"status,omitempty\" xml:\"urn:test status,omitempty\" yang:\"test-module:status\"`\n")
+
+	// Verify IsOrdered and Order methods for the 'interface' list
+	if !strings.Contains(out, "func (s *TestModuleSystem) IsOrderedInterface() bool {") {
+		t.Fatalf("expected IsOrderedInterface method, got: %v", out)
+	}
+
+	if !strings.Contains(out, "func (s *TestModuleSystem) OrderInterface() string {") {
+		t.Fatalf("expected OrderInterface method, got: %v", out)
+	}
+
+	// Verify IsOrdered and Order methods for the 'aliases' leaf-list
+	if !strings.Contains(out, "func (s *TestModuleInterfaceEntry) IsOrderedAliases() bool {") {
+		t.Fatalf("expected IsOrderedAliases method, got: %v", out)
+	}
+
+	if !strings.Contains(out, "func (s *TestModuleInterfaceEntry) OrderAliases() string {") {
+		t.Fatalf("expected OrderAliases method, got: %v", out)
+	}
 
 	// Verify Validate methods
 	assert.Contains(t, out, "func (s *TestModuleSystem) Validate() error {\n")

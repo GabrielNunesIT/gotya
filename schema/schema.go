@@ -21,6 +21,7 @@ type Node interface {
 // BaseNode provides standard data and methods for all schema nodes.
 type BaseNode struct {
 	NodeName    string
+	ModuleName  string // The YANG module this node belongs to (for RFC 7951 namespace encoding)
 	IsConfig    bool
 	Children    map[string]Node
 	Order       int // Tracks the definition order in its parent
@@ -117,6 +118,7 @@ type List struct {
 // TypeDefinition represents a YANG type, potentially with restrictions.
 type TypeDefinition struct {
 	Name            string
+	TypedefName     string // Original YANG typedef name, empty for inline types.
 	Range           []string
 	Length          []string
 	Pattern         []string

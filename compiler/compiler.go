@@ -22,6 +22,7 @@ type Compiler struct {
 	errors             []string
 	loader             ModuleLoader
 	groupings          map[string]ast.Statement // stores module-level groupings
+	typedefs           map[string]ast.Statement // stores module-level typedefs
 	externalGroupStack []map[string]ast.Statement
 	imports            map[string]string   // prefix to module name
 	importStack        []map[string]string // lexical imports mapping corresponding to grouping origins
@@ -40,6 +41,7 @@ func New(opts *Options) *Compiler {
 	c := &Compiler{
 		errors:             make([]string, 0),
 		groupings:          make(map[string]ast.Statement),
+		typedefs:           make(map[string]ast.Statement),
 		externalGroupStack: make([]map[string]ast.Statement, 0),
 		imports:            make(map[string]string),
 		importStack:        make([]map[string]string, 0),
@@ -118,9 +120,12 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 
 	// 2. Pre-process top-level groupings and typedefs
 	c.groupings = make(map[string]ast.Statement)
+	c.typedefs = make(map[string]ast.Statement)
 	for _, stmt := range allStmts {
 		if stmt.Keyword() == "grouping" {
 			c.groupings[stmt.Argument()] = stmt
+		} else if stmt.Keyword() == "typedef" {
+			c.typedefs[stmt.Argument()] = stmt
 		}
 	}
 
@@ -203,10 +208,23 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	// 7. Apply Deviations
 	c.applyDeviations(mod)
 
+	// 8. Stamp each node with its originating module name for RFC 7951 codec support
+	stampModuleName(mod.Nodes, mod.Name)
+
 	if len(c.errors) > 0 {
 		return mod, fmt.Errorf("compilation failed with %d errors:\n%s", len(c.errors), strings.Join(c.errors, "\n"))
 	}
 	return mod, nil
+}
+
+// stampModuleName recursively sets ModuleName on every node in the tree.
+func stampModuleName(nodes map[string]schema.Node, moduleName string) {
+	for _, node := range nodes {
+		node.GetBase().ModuleName = moduleName
+		if children := node.GetChildren(); len(children) > 0 {
+			stampModuleName(children, moduleName)
+		}
+	}
 }
 
 func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema.Node {
@@ -759,6 +777,44 @@ func (c *Compiler) getType(stmts []ast.Statement) schema.TypeDefinition {
 	for _, stmt := range stmts {
 		if stmt.Keyword() == "type" {
 			td.Name = stmt.Argument()
+
+			// Check if this type name references a known typedef
+			if typedefAST, ok := c.typedefs[td.Name]; ok {
+				td.TypedefName = td.Name
+				// Resolve the underlying type from the typedef
+				resolved := c.getType(typedefAST.SubStatements())
+				// Merge: keep the typedef name but use the resolved base type and its constraints
+				td.Name = resolved.Name
+				if len(resolved.Enums) > 0 {
+					td.Enums = resolved.Enums
+				}
+				if len(resolved.Bits) > 0 {
+					td.Bits = resolved.Bits
+				}
+				if len(resolved.Range) > 0 && len(td.Range) == 0 {
+					td.Range = resolved.Range
+				}
+				if len(resolved.Length) > 0 && len(td.Length) == 0 {
+					td.Length = resolved.Length
+				}
+				if len(resolved.Pattern) > 0 && len(td.Pattern) == 0 {
+					td.Pattern = resolved.Pattern
+				}
+				if len(resolved.Members) > 0 {
+					td.Members = resolved.Members
+				}
+				if resolved.Path != nil && td.Path == nil {
+					td.Path = resolved.Path
+				}
+				if resolved.FractionDigits != nil && td.FractionDigits == nil {
+					td.FractionDigits = resolved.FractionDigits
+				}
+				if len(resolved.Bases) > 0 {
+					td.Bases = resolved.Bases
+				}
+			}
+
+			// Process inline sub-statements (may override/extend typedef constraints)
 			for _, sub := range stmt.SubStatements() {
 				switch sub.Keyword() {
 				case "range":
