@@ -382,8 +382,7 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 	}
 
 	if g.Options.AddAnnotations && description != nil && *description != "" {
-		descLines := strings.Split(strings.TrimSpace(*description), "\n")
-		for _, line := range descLines {
+		for line := range strings.SplitSeq(strings.TrimSpace(*description), "\n") {
 			if _, err := fmt.Fprintf(w, "// %s\n", strings.TrimSpace(line)); err != nil {
 				return err
 			}
@@ -523,8 +522,7 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 	yangTag := fmt.Sprintf(" yang:\"%s:%s\"", moduleName, node.Name())
 
 	if g.Options.AddAnnotations && node.GetBase().Description != nil && *node.GetBase().Description != "" {
-		descLines := strings.Split(strings.TrimSpace(*node.GetBase().Description), "\n")
-		for _, line := range descLines {
+		for line := range strings.SplitSeq(strings.TrimSpace(*node.GetBase().Description), "\n") {
 			if _, err := fmt.Fprintf(w, "\t// %s\n", strings.TrimSpace(line)); err != nil {
 				return err
 			}
@@ -972,9 +970,8 @@ func buildLengthCondition(valExpr, yangType string, lengths []string) string {
 	}
 	var conditions []string
 	for _, l := range lengths {
-		parts := strings.Split(l, "|")
 		var partConds []string
-		for _, p := range parts {
+		for p := range strings.SplitSeq(l, "|") {
 			p = strings.TrimSpace(p)
 			if strings.Contains(p, "..") {
 				bounds := strings.Split(p, "..")
@@ -1018,9 +1015,8 @@ func buildLengthCondition(valExpr, yangType string, lengths []string) string {
 func buildRangeCondition(valExpr string, ranges []string) string {
 	var conditions []string
 	for _, r := range ranges {
-		parts := strings.Split(r, "|")
 		var partConds []string
-		for _, p := range parts {
+		for p := range strings.SplitSeq(r, "|") {
 			p = strings.TrimSpace(p)
 			if strings.Contains(p, "..") {
 				bounds := strings.Split(p, "..")
@@ -1359,7 +1355,7 @@ func (g *GoGenerator) generateBitsType(typeName string, bits []string, w io.Writ
 	}
 
 	// UnmarshalJSON
-	if _, err := fmt.Fprintf(w, "// UnmarshalJSON implements json.Unmarshaler for %s.\nfunc (b *%s) UnmarshalJSON(data []byte) error {\n\tvar s string\n\tif err := json.Unmarshal(data, &s); err != nil {\n\t\treturn err\n\t}\n\tif s == \"\" {\n\t\t*b = 0\n\t\treturn nil\n\t}\n\tfor _, name := range strings.Split(s, \" \") {\n\t\tif val, ok := %sNameMap[name]; ok {\n\t\t\t*b = b.Set(val)\n\t\t} else {\n\t\t\treturn fmt.Errorf(\"unknown bit name %%q for %s\", name)\n\t\t}\n\t}\n\treturn nil\n}\n", typeName, typeName, lowerName, typeName); err != nil {
+	if _, err := fmt.Fprintf(w, "// UnmarshalJSON implements json.Unmarshaler for %s.\nfunc (b *%s) UnmarshalJSON(data []byte) error {\n\tvar s string\n\tif err := json.Unmarshal(data, &s); err != nil {\n\t\treturn err\n\t}\n\tif s == \"\" {\n\t\t*b = 0\n\t\treturn nil\n\t}\n\tfor name := range strings.SplitSeq(s, \" \") {\n\t\tif val, ok := %sNameMap[name]; ok {\n\t\t\t*b = b.Set(val)\n\t\t} else {\n\t\t\treturn fmt.Errorf(\"unknown bit name %%q for %s\", name)\n\t\t}\n\t}\n\treturn nil\n}\n", typeName, typeName, lowerName, typeName); err != nil {
 		return err
 	}
 
