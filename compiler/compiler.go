@@ -178,7 +178,18 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 			if targetNode == nil {
 				pendingAugments = append(pendingAugments, aug)
 			} else {
+				beforeKeys := make(map[string]bool)
+				for k := range targetNode.GetChildren() {
+					beforeKeys[k] = true
+				}
+
 				c.parseChildren(targetNode, aug.SubStatements(), nil)
+				
+				for k, child := range targetNode.GetChildren() {
+					if !beforeKeys[k] {
+						stampModuleName(map[string]schema.Node{k: child}, mod.Name)
+					}
+				}
 				progress = true
 			}
 		}
