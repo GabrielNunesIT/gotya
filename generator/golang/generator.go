@@ -226,6 +226,8 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 					goType = "*" + prefix + toCamelCaseTitle(n.Name()) + treeType
 				case *schema.List:
 					goType = "[]*" + prefix + toCamelCaseTitle(n.Name()) + treeType
+				case *schema.AnyData, *schema.AnyXML:
+					goType = "json.RawMessage"
 				}
 				xmlTag := fmt.Sprintf(" xml:\"%s,omitempty\"", node.Name())
 				if mod.Namespace != "" {
@@ -368,6 +370,8 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 				}
 			}
 		}
+	case *schema.AnyData, *schema.AnyXML:
+		return nil
 	}
 	return nil
 }
@@ -567,6 +571,8 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 		goType = "*" + prefix + toCamelCaseTitle(n.Name()) + suffix
 	case *schema.List:
 		goType = "[]*" + prefix + toCamelCaseTitle(n.Name()) + "Entry" + suffix
+	case *schema.AnyData, *schema.AnyXML:
+		goType = "json.RawMessage"
 	}
 
 	xmlTag := fmt.Sprintf(" xml:\"%s,omitempty\"", node.Name())
