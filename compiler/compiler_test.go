@@ -1,8 +1,10 @@
 package compiler_test
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gotya/gotya/compiler"
@@ -1211,11 +1213,33 @@ module test {
 }
 
 func TestCompiler_CircularTypedef(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	input := `
+module test {
+    namespace "urn:test"; prefix "t";
+    typedef type-a { type type-b; }
+    typedef type-b { type type-a; }
+    leaf x { type type-a; }
+}`
+	_, err := compile(t, input)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "circular typedef")
 }
 
 func TestCompiler_UnresolvableAugment(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	input := `
+module test {
+    namespace "urn:test"; prefix "t";
+    augment "/does-not-exist/at-all" {
+        leaf injected { type string; }
+    }
+}`
+	_, err := compile(t, input)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "augment target not found")
 }
 
 func TestCompiler_DuplicateRPCInput(t *testing.T) {
@@ -1281,5 +1305,24 @@ module test {
 }
 
 func TestCompiler_MaxErrors(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	// Build a YANG list with 110 nonexistent keys to generate >100 errors
+	var keys []string
+	for i := 0; i < 110; i++ {
+		keys = append(keys, fmt.Sprintf("k%d", i))
+	}
+	input := fmt.Sprintf(`
+module test {
+    namespace "urn:test"; prefix "t";
+    list items {
+        key "%s";
+    }
+}`, strings.Join(keys, " "))
+	_, err := compile(t, input)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "compilation stopped")
+	// Count lines — should be at most ~101 (100 errors + 1 truncation)
+	lines := strings.Split(err.Error(), "\n")
+	assert.LessOrEqual(t, len(lines), 103, "error output should be bounded near MaxErrors")
 }
