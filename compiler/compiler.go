@@ -20,6 +20,7 @@ type ModuleLoader interface {
 // Compiler orchestrates the conversion of an AST to a Schema tree.
 type Compiler struct {
 	errors             []string
+	maxErrors          int                // maximum errors before truncation; default 100
 	loader             ModuleLoader
 	groupings          map[string]ast.Statement // stores module-level groupings
 	typedefs           map[string]ast.Statement // stores module-level typedefs
@@ -34,12 +35,14 @@ type Compiler struct {
 type Options struct {
 	Loader            ModuleLoader
 	SupportedFeatures []string
+	MaxErrors         int // 0 means use default of 100
 }
 
 // New creates a new Compiler instance.
 func New(opts *Options) *Compiler {
 	c := &Compiler{
 		errors:             make([]string, 0),
+		maxErrors:          100,
 		groupings:          make(map[string]ast.Statement),
 		typedefs:           make(map[string]ast.Statement),
 		externalGroupStack: make([]map[string]ast.Statement, 0),
@@ -53,8 +56,22 @@ func New(opts *Options) *Compiler {
 		for _, feature := range opts.SupportedFeatures {
 			c.supportedFeatures[feature] = true
 		}
+		if opts.MaxErrors > 0 {
+			c.maxErrors = opts.MaxErrors
+		}
 	}
 	return c
+}
+
+// addError appends an error message, enforcing the maxErrors limit.
+func (c *Compiler) addError(msg string) {
+	if len(c.errors) > 0 && strings.HasPrefix(c.errors[len(c.errors)-1], "compilation stopped:") {
+		return // already truncated; drop silently
+	}
+	c.errors = append(c.errors, msg)
+	if len(c.errors) >= c.maxErrors {
+		c.errors = append(c.errors, fmt.Sprintf("compilation stopped: too many errors (limit %d)", c.maxErrors))
+	}
 }
 
 // Compile takes an AST module and converts it to a standard Schema Module.
@@ -97,7 +114,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 			if c.loader != nil {
 				_, err := c.loader.Load(moduleName)
 				if err != nil {
-					c.errors = append(c.errors, fmt.Sprintf("failed to import module %s: %v", moduleName, err))
+					c.addError(fmt.Sprintf("failed to import module %s: %v", moduleName, err))
 				}
 			}
 		case "include":
@@ -109,7 +126,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 			if c.loader != nil {
 				subAST, err := c.loader.LoadAST(subName)
 				if err != nil {
-					c.errors = append(c.errors, fmt.Sprintf("failed to include submodule %s: %v", subName, err))
+					c.addError(fmt.Sprintf("failed to include submodule %s: %v", subName, err))
 				} else {
 					// Merge submodule statements into our local processing slice, preserving the original AST
 					allStmts = append(allStmts, subAST.SubStatements()...)
@@ -158,7 +175,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 				mod.Identities[n.Name()] = n
 			default:
 				if err := mod.AddNode(node); err != nil {
-					c.errors = append(c.errors, err.Error())
+					c.addError(err.Error())
 				}
 			}
 		}
@@ -168,9 +185,19 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	mod.Groupings = c.groupings
 
 	// 5. Process augments through multiple iterations to resolve chaining dependencies
+	maxIter := len(c.augments) + 1
+	iter := 0
 	progress := true
 	for progress {
 		progress = false
+		if iter >= maxIter {
+			for _, aug := range c.augments {
+				c.addError("augment target not found (loop cap reached): " + aug.Argument())
+			}
+			c.augments = nil
+			break
+		}
+		iter++
 		var pendingAugments []ast.Statement
 		for _, aug := range c.augments {
 			targetPath := aug.Argument()
@@ -197,7 +224,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	}
 
 	for _, aug := range c.augments {
-		c.errors = append(c.errors, "augment target not found: "+aug.Argument())
+		c.addError("augment target not found: "+aug.Argument())
 	}
 
 	// 5. Global validation mapping RFC constraints
@@ -208,7 +235,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	// 5. Semantic Validation
 	validator := NewValidator(c, mod)
 	if err := validator.Validate(); err != nil {
-		c.errors = append(c.errors, err.Error())
+		c.addError(err.Error())
 	}
 
 	// 6. Feature Pruning
@@ -324,7 +351,7 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 				units = &val
 			}
 		}
-		leafType := c.getType(stmt.SubStatements())
+		leafType := c.getType(stmt.SubStatements(), nil)
 		leaf := schema.NewLeaf(stmt.Argument(), &leafType)
 		leaf.SetConfig(configVal)
 		leaf.Musts = musts
@@ -334,7 +361,7 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		leaf.Units = units
 		node = leaf
 	case "leaf-list":
-		leafType := c.getType(stmt.SubStatements())
+		leafType := c.getType(stmt.SubStatements(), nil)
 		leafList := schema.NewLeafList(stmt.Argument(), &leafType)
 		leafList.SetConfig(configVal)
 		leafList.Musts = musts
@@ -413,12 +440,12 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		c.parseChildren(rpcNode, stmt.SubStatements(), nil)
 		if rpcNode.GetChildren()["input"] == nil {
 			if err := rpcNode.AddChild(schema.NewInput()); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		}
 		if rpcNode.GetChildren()["output"] == nil {
 			if err := rpcNode.AddChild(schema.NewOutput()); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		}
 		node = rpcNode
@@ -428,12 +455,12 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		c.parseChildren(actionNode, stmt.SubStatements(), nil)
 		if actionNode.GetChildren()["input"] == nil {
 			if err := actionNode.AddChild(schema.NewInput()); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		}
 		if actionNode.GetChildren()["output"] == nil {
 			if err := actionNode.AddChild(schema.NewOutput()); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		}
 		node = actionNode
@@ -485,22 +512,22 @@ func (c *Compiler) validate(node schema.Node) {
 	switch n := node.(type) {
 	case *schema.List:
 		if n.Config() && len(n.Keys) == 0 {
-			c.errors = append(c.errors, "list "+n.Name()+" must have at least one key if it is configuration data")
+			c.addError("list "+n.Name()+" must have at least one key if it is configuration data")
 		}
 		for _, keyName := range n.Keys {
 			childNode, exists := n.GetChildren()[keyName]
 			if !exists {
-				c.errors = append(c.errors, fmt.Sprintf("key '%s' not found in list '%s'", keyName, n.Name()))
+				c.addError(fmt.Sprintf("key '%s' not found in list '%s'", keyName, n.Name()))
 				continue
 			}
 			if _, isLeaf := childNode.(*schema.Leaf); !isLeaf {
-				c.errors = append(c.errors, fmt.Sprintf("key '%s' in list '%s' must be a leaf", keyName, n.Name()))
+				c.addError(fmt.Sprintf("key '%s' in list '%s' must be a leaf", keyName, n.Name()))
 			}
 		}
 	case *schema.Leaf:
 		c.validateType(n.Name(), &n.Type)
 		if n.Mandatory && n.Default != nil {
-			c.errors = append(c.errors, fmt.Sprintf("leaf '%s' is mandatory and cannot have a default value", n.Name()))
+			c.addError(fmt.Sprintf("leaf '%s' is mandatory and cannot have a default value", n.Name()))
 		}
 	case *schema.LeafList:
 		c.validateType(n.Name(), &n.Type)
@@ -508,7 +535,7 @@ func (c *Compiler) validate(node schema.Node) {
 
 	for _, child := range node.GetChildren() {
 		if !node.Config() && child.Config() {
-			c.errors = append(c.errors, fmt.Sprintf("node %s has 'config true' but its parent %s has 'config false'", child.Name(), node.Name()))
+			c.addError(fmt.Sprintf("node %s has 'config true' but its parent %s has 'config false'", child.Name(), node.Name()))
 		}
 		c.validate(child)
 	}
@@ -517,12 +544,12 @@ func (c *Compiler) validate(node schema.Node) {
 func (c *Compiler) validateType(nodeName string, td *schema.TypeDefinition) {
 	if len(td.Length) > 0 {
 		if td.Name != "string" && td.Name != "binary" {
-			c.errors = append(c.errors, fmt.Sprintf("type %s for node %s cannot have length restrictions", td.Name, nodeName))
+			c.addError(fmt.Sprintf("type %s for node %s cannot have length restrictions", td.Name, nodeName))
 		}
 	}
 	if len(td.Pattern) > 0 {
 		if td.Name != "string" {
-			c.errors = append(c.errors, fmt.Sprintf("type %s for node %s cannot have pattern restrictions", td.Name, nodeName))
+			c.addError(fmt.Sprintf("type %s for node %s cannot have pattern restrictions", td.Name, nodeName))
 		}
 	}
 	if len(td.Range) > 0 {
@@ -530,7 +557,7 @@ func (c *Compiler) validateType(nodeName string, td *schema.TypeDefinition) {
 		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "decimal64":
 			// Valid
 		default:
-			c.errors = append(c.errors, fmt.Sprintf("type %s for node %s cannot have range restrictions", td.Name, nodeName))
+			c.addError(fmt.Sprintf("type %s for node %s cannot have range restrictions", td.Name, nodeName))
 		}
 	}
 }
@@ -607,7 +634,7 @@ func (c *Compiler) applyDeviations(mod *schema.Module) {
 	for _, dev := range mod.Deviations {
 		target := c.findNode(mod, dev.Name())
 		if target == nil {
-			c.errors = append(c.errors, fmt.Sprintf("deviation target node %s not found", dev.Name()))
+			c.addError(fmt.Sprintf("deviation target node %s not found", dev.Name()))
 			continue
 		}
 
@@ -734,14 +761,14 @@ func (c *Compiler) parseChildren(parent schema.Node, stmts []ast.Statement, visi
 					caseNode := schema.NewCase(child.Name())
 					caseNode.SetConfig(child.Config())
 					if err := caseNode.AddChild(child); err != nil {
-					c.errors = append(c.errors, err.Error())
+					c.addError(err.Error())
 				}
 					child = caseNode
 				}
 			}
 
 			if err := parent.AddChild(child); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		}
 	}
@@ -792,7 +819,8 @@ func (c *Compiler) findNode(mod *schema.Module, path string) schema.Node {
 }
 
 // getType looks for a 'type' substatement and extracts its definition with restrictions.
-func (c *Compiler) getType(stmts []ast.Statement) schema.TypeDefinition {
+// visited tracks typedef names being resolved to detect circular references; pass nil on first call.
+func (c *Compiler) getType(stmts []ast.Statement, visited map[string]bool) schema.TypeDefinition {
 	var td schema.TypeDefinition
 	for _, stmt := range stmts {
 		if stmt.Keyword() == "type" {
@@ -801,8 +829,18 @@ func (c *Compiler) getType(stmts []ast.Statement) schema.TypeDefinition {
 			// Check if this type name references a known typedef
 			if typedefAST, ok := c.typedefs[td.Name]; ok {
 				td.TypedefName = td.Name
+				// Cycle detection for typedef resolution
+				if visited == nil {
+					visited = make(map[string]bool)
+				}
+				if visited[td.Name] {
+					c.addError("circular typedef detected: " + td.Name)
+					return td
+				}
+				visited[td.Name] = true
+				defer delete(visited, td.Name)
 				// Resolve the underlying type from the typedef
-				resolved := c.getType(typedefAST.SubStatements())
+				resolved := c.getType(typedefAST.SubStatements(), visited)
 				// Merge: keep the typedef name but use the resolved base type and its constraints
 				td.Name = resolved.Name
 				if len(resolved.Enums) > 0 {
@@ -862,7 +900,7 @@ func (c *Compiler) getType(stmts []ast.Statement) schema.TypeDefinition {
 					td.Path = &val
 				case "type":
 					// union member type — recurse to capture sub-constraints
-					member := c.getType([]ast.Statement{sub})
+					member := c.getType([]ast.Statement{sub}, nil)
 					td.Members = append(td.Members, member)
 				}
 			}
@@ -883,7 +921,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 		visited = make(map[string]bool)
 	}
 	if visited[groupName] {
-		c.errors = append(c.errors, "circular dependency detected in uses: "+groupName)
+		c.addError("circular dependency detected in uses: "+groupName)
 		return
 	}
 	visited[groupName] = true
@@ -935,7 +973,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 	}
 
 	if grpAST == nil {
-		c.errors = append(c.errors, "grouping not found: "+groupName)
+		c.addError("grouping not found: "+groupName)
 		return
 	}
 
@@ -960,7 +998,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 			if targetNode != nil {
 				c.applyRefine(targetNode, sub)
 			} else {
-				c.errors = append(c.errors, "refine target not found: "+targetPath)
+				c.addError("refine target not found: "+targetPath)
 			}
 		} else if sub.Keyword() == "augment" {
 			targetPath := sub.Argument()
@@ -968,7 +1006,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 			if targetNode != nil {
 				c.parseChildren(targetNode, sub.SubStatements(), visited)
 			} else {
-				c.errors = append(c.errors, "uses augment target not found: "+targetPath)
+				c.addError("uses augment target not found: "+targetPath)
 			}
 		}
 	}
@@ -976,11 +1014,11 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 	for _, child := range temp.GetChildren() {
 		if mod != nil {
 			if err := mod.AddNode(child); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		} else if parent != nil {
 			if err := parent.AddChild(child); err != nil {
-				c.errors = append(c.errors, err.Error())
+				c.addError(err.Error())
 			}
 		}
 	}
