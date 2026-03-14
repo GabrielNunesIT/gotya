@@ -22,6 +22,7 @@ type DirectoryLoader struct {
 	paths       []string
 	astCache    map[string]*ast.Module
 	schemaCache map[string]*schema.Module
+	inProgress  map[string]bool
 }
 
 // NewDirectoryLoader creates a loader referencing a list of directories
@@ -30,6 +31,7 @@ func NewDirectoryLoader(paths []string) *DirectoryLoader {
 		paths:       paths,
 		astCache:    make(map[string]*ast.Module),
 		schemaCache: make(map[string]*schema.Module),
+		inProgress:  make(map[string]bool),
 	}
 }
 
@@ -88,6 +90,11 @@ func (l *DirectoryLoader) Load(name string) (*schema.Module, error) {
 	if m, ok := l.schemaCache[name]; ok {
 		return m, nil
 	}
+	if l.inProgress[name] {
+		return nil, fmt.Errorf("circular import detected: module %s is already being compiled", name)
+	}
+	l.inProgress[name] = true
+	defer func() { delete(l.inProgress, name) }()
 
 	astMod, err := l.LoadAST(name)
 	if err != nil {
