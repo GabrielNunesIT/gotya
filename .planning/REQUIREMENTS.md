@@ -23,10 +23,10 @@
 
 ### Go Generator
 
-- [ ] **GOGEN-01**: Identityref leaf types generate a typed Go `const` block for the identity hierarchy, not `*string` — cross-module base resolution supported
-- [ ] **GOGEN-02**: `anydata` and `anyxml` nodes emit a valid Go field (e.g., `interface{}` or `json.RawMessage`) — no silent node drops
-- [ ] **GOGEN-03**: `rpc`, `action`, and `notification` statements generate typed Go request/response structs — input and output containers emitted as nested structs
-- [ ] **GOGEN-04**: Deviation statements are applied as a pre-pass before code generation — `deviate not-supported` removes nodes, `deviate replace` updates type/constraints, `deviate add/delete` updates properties
+- [x] **GOGEN-01**: Identityref leaf types generate a typed Go `const` block for the identity hierarchy, not `*string` — cross-module base resolution supported
+- [x] **GOGEN-02**: `anydata` and `anyxml` nodes emit a valid Go field (e.g., `interface{}` or `json.RawMessage`) — no silent node drops
+- [x] **GOGEN-03**: `rpc`, `action`, and `notification` statements generate typed Go request/response structs — input and output containers emitted as nested structs
+- [x] **GOGEN-04**: Deviation statements are applied as a pre-pass before code generation — `deviate not-supported` removes nodes, `deviate replace` updates type/constraints, `deviate add/delete` updates properties
 
 ### Protobuf Generator
 
@@ -86,10 +86,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
 | TEST-03 | Phase 2 | Complete |
-| GOGEN-01 | Phase 3 | Pending |
-| GOGEN-02 | Phase 3 | Pending |
-| GOGEN-03 | Phase 3 | Pending |
-| GOGEN-04 | Phase 3 | Pending |
+| GOGEN-01 | Phase 3 | Complete |
+| GOGEN-02 | Phase 3 | Complete |
+| GOGEN-03 | Phase 3 | Complete |
+| GOGEN-04 | Phase 3 | Complete |
 | PBGEN-01 | Phase 4 | Pending |
 | PBGEN-02 | Phase 4 | Pending |
 | PBGEN-03 | Phase 4 | Pending |

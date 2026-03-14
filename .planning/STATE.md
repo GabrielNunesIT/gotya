@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-testing-infrastructure/02-03-PLAN.md
-last_updated: "2026-03-14T21:23:48.659Z"
+stopped_at: Completed 03-go-generator/03-01-PLAN.md
+last_updated: "2026-03-14T21:52:17.313Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 12
+  completed_plans: 8
   percent: 0
 ---
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-testing-infrastructure P01 | 8min | 2 tasks | 3 files |
 | Phase 02-testing-infrastructure P02 | 3min | 2 tasks | 2 files |
 | Phase 02-testing-infrastructure P03 | 3min | 1 tasks | 4 files |
+| Phase 03-go-generator P01 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 02-testing-infrastructure]: GenerateDevice buffers all output internally, applies format.Source, writes formatted bytes to caller's Writer — no partial writes on syntax error
 - [Phase 02-testing-infrastructure]: corpusLoader is a copy of fileLoader from generate.go — //go:build ignore prevents import; duplication is intentional
 - [Phase 02-testing-infrastructure]: Sequential load + parallel generation subtests avoids data race on corpusLoader map cache
+- [Phase 03-go-generator]: TestIdentityrefCrossModule uses manually constructed schema.Module — compiler cannot resolve prefixed identityref bases without a loader; authorized approach at stub stage
+- [Phase 03-go-generator]: Deviation stubs (all 3) use manually constructed schema.Module representing post-deviation state — cross-module deviation requires loader-aware multi-pass compile not yet supported
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T21:21:32.569Z
-Stopped at: Completed 02-testing-infrastructure/02-03-PLAN.md
+Last session: 2026-03-14T21:52:17.311Z
+Stopped at: Completed 03-go-generator/03-01-PLAN.md
 Resume file: None
