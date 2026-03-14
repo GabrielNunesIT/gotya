@@ -1166,3 +1166,31 @@ func TestCompiler_XPathSyntax(t *testing.T) {
 	assert.Contains(t, err.Error(), "mismatched brackets or parentheses in must expression")
 	assert.Contains(t, err.Error(), "mismatched brackets or parentheses in path expression")
 }
+
+func TestCompiler_MalformedAugmentPath(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
+
+func TestCompiler_MalformedRefinePath(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
+
+func TestCompiler_CircularTypedef(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
+
+func TestCompiler_UnresolvableAugment(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
+
+func TestCompiler_DuplicateRPCInput(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
+
+func TestCompiler_NoDebugOutput(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
+
+func TestCompiler_MaxErrors(t *testing.T) {
+	t.Fatal("not yet implemented")
+}
