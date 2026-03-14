@@ -1,6 +1,8 @@
 package compiler_test
 
 import (
+	"io"
+	"os"
 	"testing"
 
 	"github.com/gotya/gotya/compiler"
@@ -9,6 +11,16 @@ import (
 	"github.com/gotya/gotya/schema"
 	"github.com/stretchr/testify/assert"
 )
+
+// compile is a helper that runs lexer -> parser -> compiler on a YANG input string.
+func compile(t *testing.T, input string) (*schema.Module, error) {
+	t.Helper()
+	lex := lexer.New(input)
+	p := parser.New(lex)
+	astMod := p.ParseModule()
+	comp := compiler.New(nil)
+	return comp.Compile(astMod)
+}
 
 func TestCompiler_Compile(t *testing.T) {
 	t.Parallel()
@@ -1168,11 +1180,34 @@ func TestCompiler_XPathSyntax(t *testing.T) {
 }
 
 func TestCompiler_MalformedAugmentPath(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	input := `
+module test {
+    namespace "urn:test"; prefix "t";
+    augment "/nonexistent/path" {
+        leaf x { type string; }
+    }
+}`
+	_, err := compile(t, input)
+	assert.Error(t, err, "augment to nonexistent path must return error")
 }
 
 func TestCompiler_MalformedRefinePath(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	input := `
+module test {
+    namespace "urn:test"; prefix "t";
+    grouping g { leaf x { type string; } }
+    container c {
+        uses g {
+            refine "nonexistent-leaf" { mandatory true; }
+        }
+    }
+}`
+	_, err := compile(t, input)
+	assert.Error(t, err, "refine to nonexistent path must return error")
 }
 
 func TestCompiler_CircularTypedef(t *testing.T) {
@@ -1184,11 +1219,65 @@ func TestCompiler_UnresolvableAugment(t *testing.T) {
 }
 
 func TestCompiler_DuplicateRPCInput(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	input := `
+module test {
+    namespace "urn:test"; prefix "t";
+    rpc do-thing {
+        input { leaf x { type string; } }
+        input { leaf y { type string; } }
+    }
+}`
+	_, err := compile(t, input)
+	assert.Error(t, err, "duplicate rpc input must return error")
 }
 
 func TestCompiler_NoDebugOutput(t *testing.T) {
-	t.Fatal("not yet implemented")
+	t.Parallel()
+
+	runAndCapture := func(yangInput string) (string, string) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		oldStderr := os.Stderr
+		re, we, _ := os.Pipe()
+		os.Stderr = we
+
+		lex := lexer.New(yangInput)
+		p := parser.New(lex)
+		astMod := p.ParseModule()
+		comp := compiler.New(nil)
+		_, _ = comp.Compile(astMod)
+
+		w.Close()
+		we.Close()
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+
+		out, _ := io.ReadAll(r)
+		errOut, _ := io.ReadAll(re)
+		return string(out), string(errOut)
+	}
+
+	// Valid YANG
+	validYANG := `module m { namespace "urn:m"; prefix "m"; }`
+	out, errOut := runAndCapture(validYANG)
+	assert.Empty(t, out, "stdout must be empty for valid YANG")
+	assert.Empty(t, errOut, "stderr must be empty for valid YANG")
+
+	// Malformed YANG (augment to nonexistent target triggers the previously-debug path)
+	badYANG := `
+module test {
+    namespace "urn:test"; prefix "t";
+    augment "/nonexistent/path" {
+        leaf x { type string; }
+    }
+}`
+	out2, errOut2 := runAndCapture(badYANG)
+	assert.Empty(t, out2, "stdout must be empty for invalid YANG")
+	assert.Empty(t, errOut2, "stderr must be empty for invalid YANG")
 }
 
 func TestCompiler_MaxErrors(t *testing.T) {
