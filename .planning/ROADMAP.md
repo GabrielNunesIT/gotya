@@ -51,7 +51,12 @@ Plans:
   1. Running `go test ./...` against the YANG corpus in `test/assets/yangs/` completes without any panic and reports no failures — the corpus is a regression gate, not just documentation
   2. Generating Go output from any valid YANG module and passing the result to `go/format.Source()` succeeds — invalid generated Go is caught at generation time and reported as a generation error
   3. A test that asserts on a compiler error can use a typed sentinel value (e.g., `errors.Is(err, compiler.ErrCircularTypedef)`) instead of checking whether an error string contains a substring
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Error sentinels: change c.errors to []error, add Err* vars, migrate compiler_test.go to errors.Is (TEST-03)
+- [ ] 02-02-PLAN.md — go/format.Source() in GenerateDevice + TestGoGenerator_FormatValidation (TEST-02)
+- [ ] 02-03-PLAN.md — Corpus smoke test: test/corpus_test.go with corpusLoader and TestCorpus (TEST-01)
 
 ### Phase 3: Go Generator
 **Goal**: The Go generator produces correct, complete output for all YANG statement types encountered in real-world OpenConfig and standard YANG modules
@@ -93,7 +98,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Compiler Correctness | 4/4 | Complete    | 2026-03-14 |
-| 2. Testing Infrastructure | 0/TBD | Not started | - |
+| 2. Testing Infrastructure | 0/3 | Not started | - |
 | 3. Go Generator | 0/TBD | Not started | - |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
 | 5. Public API Stabilization | 0/TBD | Not started | - |
