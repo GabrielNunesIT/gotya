@@ -412,10 +412,14 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		rpcNode.Musts = musts
 		c.parseChildren(rpcNode, stmt.SubStatements(), nil)
 		if rpcNode.GetChildren()["input"] == nil {
-			_ = rpcNode.AddChild(schema.NewInput())
+			if err := rpcNode.AddChild(schema.NewInput()); err != nil {
+				c.errors = append(c.errors, err.Error())
+			}
 		}
 		if rpcNode.GetChildren()["output"] == nil {
-			_ = rpcNode.AddChild(schema.NewOutput())
+			if err := rpcNode.AddChild(schema.NewOutput()); err != nil {
+				c.errors = append(c.errors, err.Error())
+			}
 		}
 		node = rpcNode
 	case "action":
@@ -423,10 +427,14 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		actionNode.Musts = musts
 		c.parseChildren(actionNode, stmt.SubStatements(), nil)
 		if actionNode.GetChildren()["input"] == nil {
-			_ = actionNode.AddChild(schema.NewInput())
+			if err := actionNode.AddChild(schema.NewInput()); err != nil {
+				c.errors = append(c.errors, err.Error())
+			}
 		}
 		if actionNode.GetChildren()["output"] == nil {
-			_ = actionNode.AddChild(schema.NewOutput())
+			if err := actionNode.AddChild(schema.NewOutput()); err != nil {
+				c.errors = append(c.errors, err.Error())
+			}
 		}
 		node = actionNode
 	case "notification":
@@ -725,7 +733,9 @@ func (c *Compiler) parseChildren(parent schema.Node, stmts []ast.Statement, visi
 					// implicitly create a short-hand case
 					caseNode := schema.NewCase(child.Name())
 					caseNode.SetConfig(child.Config())
-					_ = caseNode.AddChild(child)
+					if err := caseNode.AddChild(child); err != nil {
+					c.errors = append(c.errors, err.Error())
+				}
 					child = caseNode
 				}
 			}
@@ -775,7 +785,6 @@ func (c *Compiler) findNode(mod *schema.Module, path string) schema.Node {
 		}
 
 		if current == nil {
-			fmt.Printf("DEBUG findNode: current is nil at part '%s', prefix='%s', name='%s' for target path '%s'\n", part, prefix, name, path)
 			return nil
 		}
 	}
@@ -927,7 +936,6 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 
 	if grpAST == nil {
 		c.errors = append(c.errors, "grouping not found: "+groupName)
-		fmt.Printf("DEBUG: grouping not found: %s\n", groupName)
 		return
 	}
 
