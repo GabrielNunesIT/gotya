@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Write failing test stubs for all 8 Phase 1 behaviors (Wave 1)
+- [x] 01-01-PLAN.md — Write failing test stubs for all 8 Phase 1 behaviors (Wave 1) (completed 2026-03-14)
 - [ ] 01-02-PLAN.md — Remove debug printfs, nil-guard findNode, fix AddChild error propagation (COMP-01, COMP-05, COMP-06)
 - [ ] 01-03-PLAN.md — Add circular import guard to DirectoryLoader (COMP-03)
 - [ ] 01-04-PLAN.md — Circular typedef visited set, augment loop cap, MaxErrors bound (COMP-02, COMP-04, COMP-07)
@@ -92,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compiler Correctness | 4/4 | Complete   | 2026-03-14 |
+| 1. Compiler Correctness | 4/4 | Complete    | 2026-03-14 |
 | 2. Testing Infrastructure | 0/TBD | Not started | - |
 | 3. Go Generator | 0/TBD | Not started | - |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
