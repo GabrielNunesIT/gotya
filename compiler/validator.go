@@ -12,6 +12,7 @@ import (
 type Validator struct {
 	compiler *Compiler
 	module   *schema.Module
+	errors   []string
 }
 
 // NewValidator creates a semantic validator for a compiled module.
@@ -19,11 +20,11 @@ func NewValidator(c *Compiler, m *schema.Module) *Validator {
 	return &Validator{
 		compiler: c,
 		module:   m,
+		errors:   make([]string, 0),
 	}
 }
 
 // Validate performs semantic validation on the compiled module.
-// Errors are reported directly via c.addError with the appropriate sentinel.
 func (v *Validator) Validate() error {
 	v.validateConfigBoundaries(nil, v.module.Nodes)
 	v.validateListKeys(v.module.Nodes)
@@ -31,13 +32,17 @@ func (v *Validator) Validate() error {
 	v.validateIdentities(v.module.Nodes)
 	v.validateDefaultValues(v.module.Nodes)
 	v.validateXPathSyntax(v.module.Nodes)
+
+	if len(v.errors) > 0 {
+		return fmt.Errorf("validation failed with %d errors:\n%s", len(v.errors), strings.Join(v.errors, "\n"))
+	}
 	return nil
 }
 
 func (v *Validator) validateConfigBoundaries(parent schema.Node, nodes map[string]schema.Node) {
 	for _, node := range nodes {
 		if parent != nil && !parent.Config() && node.Config() {
-			v.compiler.addError(ErrConfigBoundary, fmt.Sprintf("node %s has config true but parent %s has config false", node.Name(), parent.Name()))
+			v.errors = append(v.errors, fmt.Sprintf("node %s has config true but parent %s has config false", node.Name(), parent.Name()))
 		}
 		if len(node.GetChildren()) > 0 {
 			v.validateConfigBoundaries(node, node.GetChildren())
@@ -51,16 +56,16 @@ func (v *Validator) validateListKeys(nodes map[string]schema.Node) {
 			for _, key := range list.Keys {
 				child, exists := list.GetChildren()[key]
 				if !exists {
-					v.compiler.addError(ErrListMissingKey, fmt.Sprintf("list %s key %s not found as a child leaf", list.Name(), key))
+					v.errors = append(v.errors, fmt.Sprintf("list %s key %s not found as a child leaf", list.Name(), key))
 					continue
 				}
 				leaf, isLeaf := child.(*schema.Leaf)
 				if !isLeaf {
-					v.compiler.addError(ErrListMissingKey, fmt.Sprintf("list %s key %s must be a leaf", list.Name(), key))
+					v.errors = append(v.errors, fmt.Sprintf("list %s key %s must be a leaf", list.Name(), key))
 					continue
 				}
 				if leaf.Type.Name == "empty" {
-					v.compiler.addError(ErrListMissingKey, fmt.Sprintf("list %s key %s cannot be of type empty", list.Name(), key))
+					v.errors = append(v.errors, fmt.Sprintf("list %s key %s cannot be of type empty", list.Name(), key))
 				}
 			}
 		}
@@ -74,11 +79,11 @@ func (v *Validator) validateMandatoryAndDefault(nodes map[string]schema.Node) {
 	for _, node := range nodes {
 		if leaf, ok := node.(*schema.Leaf); ok {
 			if leaf.Mandatory && leaf.Default != nil {
-				v.compiler.addError(ErrMandatoryDefault, fmt.Sprintf("leaf %s cannot be both mandatory and have a default value", leaf.Name()))
+				v.errors = append(v.errors, fmt.Sprintf("leaf %s cannot be both mandatory and have a default value", leaf.Name()))
 			}
 		} else if choice, ok := node.(*schema.Choice); ok {
 			if choice.Mandatory && choice.Default != nil {
-				v.compiler.addError(ErrMandatoryDefault, fmt.Sprintf("choice %s cannot be both mandatory and have a default case", choice.Name()))
+				v.errors = append(v.errors, fmt.Sprintf("choice %s cannot be both mandatory and have a default case", choice.Name()))
 			}
 		}
 		if len(node.GetChildren()) > 0 {
@@ -106,7 +111,7 @@ func (v *Validator) checkNodeIdentities(node schema.Node) {
 
 	if typeDef != nil && typeDef.Name == "identityref" {
 		if len(typeDef.Bases) == 0 {
-			v.compiler.addError(ErrIdentityrefBase, fmt.Sprintf("identityref %s must have at least one base statement", node.Name()))
+			v.errors = append(v.errors, fmt.Sprintf("identityref %s must have at least one base statement", node.Name()))
 			return
 		}
 
@@ -121,7 +126,7 @@ func (v *Validator) resolveIdentityBase(base, nodeName string) {
 	if len(parts) == 1 {
 		// Local identity
 		if _, ok := v.module.Identities[base]; !ok {
-			v.compiler.addError(ErrIdentityrefBase, fmt.Sprintf("invalid identityref base '%s' in %s: identity not found locally", base, nodeName))
+			v.errors = append(v.errors, fmt.Sprintf("invalid identityref base '%s' in %s: identity not found locally", base, nodeName))
 		}
 	} else if len(parts) == 2 { // valid prefix usage
 		prefix := parts[0]
@@ -138,10 +143,10 @@ func (v *Validator) resolveIdentityBase(base, nodeName string) {
 				}
 			}
 			if !found {
-				v.compiler.addError(ErrIdentityrefBase, fmt.Sprintf("invalid identityref base '%s' in %s: identity not found in imported module %s", base, nodeName, modName))
+				v.errors = append(v.errors, fmt.Sprintf("invalid identityref base '%s' in %s: identity not found in imported module %s", base, nodeName, modName))
 			}
 		} else {
-			v.compiler.addError(ErrIdentityrefBase, fmt.Sprintf("invalid identityref base '%s' in %s: unknown prefix %s", base, nodeName, prefix))
+			v.errors = append(v.errors, fmt.Sprintf("invalid identityref base '%s' in %s: unknown prefix %s", base, nodeName, prefix))
 		}
 	}
 }
@@ -163,16 +168,16 @@ func (v *Validator) checkTypeMatch(nodeName, val string, td *schema.TypeDefiniti
 	switch td.Name {
 	case "boolean":
 		if val != "true" && val != "false" {
-			v.compiler.addError(ErrInvalidDefault, fmt.Sprintf("invalid default '%s' for boolean leaf %s", val, nodeName))
+			v.errors = append(v.errors, fmt.Sprintf("invalid default '%s' for boolean leaf %s", val, nodeName))
 		}
 	case "int8", "int16", "int32", "int64":
 		// Basic parsing check
 		if _, err := strconv.ParseInt(val, 10, 64); err != nil {
-			v.compiler.addError(ErrInvalidDefault, fmt.Sprintf("invalid default '%s' for integer leaf %s", val, nodeName))
+			v.errors = append(v.errors, fmt.Sprintf("invalid default '%s' for integer leaf %s", val, nodeName))
 		}
 	case "uint8", "uint16", "uint32", "uint64":
 		if _, err := strconv.ParseUint(val, 10, 64); err != nil {
-			v.compiler.addError(ErrInvalidDefault, fmt.Sprintf("invalid default '%s' for unsigned integer leaf %s", val, nodeName))
+			v.errors = append(v.errors, fmt.Sprintf("invalid default '%s' for unsigned integer leaf %s", val, nodeName))
 		}
 	case "enumeration":
 		if len(td.Enums) > 0 {
@@ -184,7 +189,7 @@ func (v *Validator) checkTypeMatch(nodeName, val string, td *schema.TypeDefiniti
 				}
 			}
 			if !found {
-				v.compiler.addError(ErrInvalidDefault, fmt.Sprintf("invalid default '%s' for enum leaf %s", val, nodeName))
+				v.errors = append(v.errors, fmt.Sprintf("invalid default '%s' for enum leaf %s", val, nodeName))
 			}
 		}
 	}
@@ -220,7 +225,7 @@ func (v *Validator) validateXPathSyntax(nodes map[string]schema.Node) {
 func (v *Validator) checkXPathSyntax(nodeName, stmtType, expr string) {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {
-		v.compiler.addError(ErrXPathSyntax, fmt.Sprintf("empty %s expression in node %s", stmtType, nodeName))
+		v.errors = append(v.errors, fmt.Sprintf("empty %s expression in node %s", stmtType, nodeName))
 		return
 	}
 
@@ -259,9 +264,9 @@ func (v *Validator) checkXPathSyntax(nodeName, stmtType, expr string) {
 	}
 
 	if singleQuote%2 != 0 || doubleQuote%2 != 0 {
-		v.compiler.addError(ErrXPathSyntax, fmt.Sprintf("mismatched quotes in %s expression '%s' for node %s", stmtType, expr, nodeName))
+		v.errors = append(v.errors, fmt.Sprintf("mismatched quotes in %s expression '%s' for node %s", stmtType, expr, nodeName))
 	}
 	if bracketLevel != 0 || parenLevel != 0 {
-		v.compiler.addError(ErrXPathSyntax, fmt.Sprintf("mismatched brackets or parentheses in %s expression '%s' for node %s", stmtType, expr, nodeName))
+		v.errors = append(v.errors, fmt.Sprintf("mismatched brackets or parentheses in %s expression '%s' for node %s", stmtType, expr, nodeName))
 	}
 }

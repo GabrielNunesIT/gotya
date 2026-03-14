@@ -207,7 +207,7 @@ func TestCompiler_Validation(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrListMissingKey)
+	assert.Contains(t, err.Error(), "list invalid-list must have at least one key")
 }
 
 func TestCompiler_IdentifierUniqueness(t *testing.T) {
@@ -237,7 +237,7 @@ func TestCompiler_IdentifierUniqueness(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrDuplicateIdent)
+	assert.Contains(t, err.Error(), "duplicate identifier 'id'")
 }
 
 func TestCompiler_ConfigBoundary(t *testing.T) {
@@ -266,7 +266,7 @@ func TestCompiler_ConfigBoundary(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrConfigBoundary)
+	assert.Contains(t, err.Error(), "has 'config true' but its parent base has 'config false'")
 }
 
 func TestCompiler_TypeRestrictions(t *testing.T) {
@@ -344,7 +344,9 @@ func TestCompiler_InvalidTypeRestrictions(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrTypeRestriction)
+	assert.Contains(t, err.Error(), "type string for node invalid-string cannot have range")
+	assert.Contains(t, err.Error(), "type int32 for node invalid-int cannot have length")
+	assert.Contains(t, err.Error(), "type int32 for node invalid-int cannot have pattern")
 }
 
 func TestCompiler_ListKeyValidation(t *testing.T) {
@@ -375,7 +377,8 @@ func TestCompiler_ListKeyValidation(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrListMissingKey)
+	assert.Contains(t, err.Error(), "key 'not-here' not found in list 'bad-list-nonexistent'")
+	assert.Contains(t, err.Error(), "key 'wrong-type' in list 'bad-list-wrong-type' must be a leaf")
 }
 
 func TestCompiler_CircularUses(t *testing.T) {
@@ -408,7 +411,7 @@ func TestCompiler_CircularUses(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrCircularUses)
+	assert.Contains(t, err.Error(), "circular dependency detected in uses")
 }
 
 func TestCompiler_MandatoryDefaultValidation(t *testing.T) {
@@ -435,7 +438,7 @@ func TestCompiler_MandatoryDefaultValidation(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrMandatoryDefault)
+	assert.Contains(t, err.Error(), "leaf 'invalid-leaf' is mandatory and cannot have a default value")
 }
 
 func TestCompiler_MustAndPresence(t *testing.T) {
@@ -852,10 +855,10 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		input         string
-		expectError   bool
-		wantSentinel  error
+		name        string
+		input       string
+		expectError bool
+		errorMsg    string
 	}{
 		{
 			name: "Valid Local Base",
@@ -886,8 +889,8 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 					}
 				}
 			`,
-			expectError:  true,
-			wantSentinel: compiler.ErrIdentityrefBase,
+			expectError: true,
+			errorMsg:    "invalid identityref base 'unknown-base' in id: identity not found locally",
 		},
 		{
 			name: "No Base Statement",
@@ -900,8 +903,8 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 					}
 				}
 			`,
-			expectError:  true,
-			wantSentinel: compiler.ErrIdentityrefBase,
+			expectError: true,
+			errorMsg:    "identityref id must have at least one base statement",
 		},
 		{
 			name: "Unknown Prefix",
@@ -916,8 +919,8 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 					}
 				}
 			`,
-			expectError:  true,
-			wantSentinel: compiler.ErrIdentityrefBase,
+			expectError: true,
+			errorMsg:    "invalid identityref base 'other:my-base' in id: unknown prefix other",
 		},
 	}
 	for _, tt := range tests {
@@ -933,7 +936,7 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 
 			if tt.expectError {
 				assert.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantSentinel)
+				assert.Contains(t, err.Error(), tt.errorMsg)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -1133,7 +1136,10 @@ func TestCompiler_DefaultValues(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrInvalidDefault)
+	assert.Contains(t, err.Error(), "invalid default 'True' for boolean leaf bad-bool")
+	assert.Contains(t, err.Error(), "invalid default '12.5' for integer leaf bad-int")
+	assert.Contains(t, err.Error(), "invalid default '-5' for unsigned integer leaf bad-uint")
+	assert.Contains(t, err.Error(), "invalid default 'green' for enum leaf bad-enum")
 }
 
 func TestCompiler_XPathSyntax(t *testing.T) {
@@ -1170,7 +1176,9 @@ func TestCompiler_XPathSyntax(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrXPathSyntax)
+	assert.Contains(t, err.Error(), "mismatched quotes in when expression")
+	assert.Contains(t, err.Error(), "mismatched brackets or parentheses in must expression")
+	assert.Contains(t, err.Error(), "mismatched brackets or parentheses in path expression")
 }
 
 func TestCompiler_MalformedAugmentPath(t *testing.T) {
@@ -1216,7 +1224,7 @@ module test {
 }`
 	_, err := compile(t, input)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrCircularTypedef)
+	assert.Contains(t, err.Error(), "circular typedef")
 }
 
 func TestCompiler_UnresolvableAugment(t *testing.T) {
@@ -1231,7 +1239,7 @@ module test {
 }`
 	_, err := compile(t, input)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrAugmentNotFound)
+	assert.Contains(t, err.Error(), "augment target not found")
 }
 
 func TestCompiler_DuplicateRPCInput(t *testing.T) {
@@ -1313,5 +1321,8 @@ module test {
 }`, strings.Join(keys, " "))
 	_, err := compile(t, input)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, compiler.ErrMaxErrors)
+	assert.Contains(t, err.Error(), "compilation stopped")
+	// Count lines — should be at most ~101 (100 errors + 1 truncation)
+	lines := strings.Split(err.Error(), "\n")
+	assert.LessOrEqual(t, len(lines), 103, "error output should be bounded near MaxErrors")
 }

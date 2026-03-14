@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 02-testing-infrastructure/02-01-PLAN.md
-last_updated: "2026-03-14T21:17:12.376Z"
+stopped_at: Completed 01-compiler-correctness/01-04-PLAN.md
+last_updated: "2026-03-14T17:17:16.932Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 7
-  completed_plans: 5
+  total_plans: 4
+  completed_plans: 4
   percent: 0
 ---
 
@@ -54,7 +54,6 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-compiler-correctness P03 | 1min | 2 tasks | 2 files |
 | Phase 01-compiler-correctness P02 | 5 | 2 tasks | 2 files |
 | Phase 01-compiler-correctness P04 | 3min | 2 tasks | 2 files |
-| Phase 02-testing-infrastructure P01 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,7 +74,6 @@ Recent decisions affecting current work:
 - [Phase 01-compiler-correctness]: addError() internal body retains direct c.errors = append() — only two lines inside helper; all external sites use c.addError()
 - [Phase 01-compiler-correctness]: union member recursion in getType passes nil (not visited) — union types are independent, not typedef chains
 - [Phase 01-compiler-correctness]: defer delete(visited, td.Name) used for cycle detection cleanup — ensures entry cleared on all return paths
-- [Phase 02-testing-infrastructure]: Validator refactored to call c.addError(sentinel, msg) directly — each error category carries correct sentinel for errors.Is
 
 ### Pending Todos
 
@@ -89,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T21:17:12.375Z
-Stopped at: Completed 02-testing-infrastructure/02-01-PLAN.md
+Last session: 2026-03-14T17:14:17.807Z
+Stopped at: Completed 01-compiler-correctness/01-04-PLAN.md
 Resume file: None

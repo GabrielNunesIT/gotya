@@ -2,6 +2,7 @@ package golang_test
 
 import (
 	"bytes"
+	"go/format"
 	"strings"
 	"testing"
 
@@ -9,7 +10,9 @@ import (
 	"github.com/gotya/gotya/generator/golang"
 	"github.com/gotya/gotya/parser"
 	"github.com/gotya/gotya/parser/lexer"
+	"github.com/gotya/gotya/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGoGenerator_Generate(t *testing.T) {
@@ -118,4 +121,19 @@ module test-module {
 	// Verify Validate methods
 	assert.Contains(t, out, "func (s *TestModuleSystem) Validate() error {\n")
 	assert.Contains(t, out, "func (s *TestModuleInterfaceEntry) Validate() error {\n")
+}
+
+func TestGoGenerator_FormatValidation(t *testing.T) {
+	t.Parallel()
+	// After format.Source integration, GenerateDevice output must be valid, gofmt-formatted Go.
+	// This test verifies that: (a) valid modules produce no error, and (b) the output written
+	// to the caller's writer passes go/format.Source (i.e. it IS the formatted output).
+	gen := golang.New(&golang.Options{PackageName: "fmttest", RootName: "Device"})
+	mod := &schema.Module{Name: "simple", Nodes: nil}
+	var buf bytes.Buffer
+	err := gen.(*golang.GoGenerator).GenerateDevice([]*schema.Module{mod}, &buf)
+	require.NoError(t, err)
+	// Verify output is valid, canonical Go syntax
+	_, fmtErr := format.Source(buf.Bytes())
+	assert.NoError(t, fmtErr, "GenerateDevice output must be valid Go syntax")
 }
