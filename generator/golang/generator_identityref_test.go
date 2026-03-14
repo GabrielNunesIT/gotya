@@ -2,6 +2,7 @@ package golang_test
 
 import (
 	"bytes"
+	"go/format"
 	"testing"
 
 	"github.com/gotya/gotya/compiler"
@@ -9,6 +10,7 @@ import (
 	"github.com/gotya/gotya/parser"
 	"github.com/gotya/gotya/parser/lexer"
 	"github.com/gotya/gotya/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,34 +49,47 @@ module test-identityref {
 	err = gen.GenerateDevice([]*schema.Module{schemaMod}, &buf)
 	require.NoError(t, err)
 
-	t.Fatal("not yet implemented")
+	out := buf.String()
+
+	// Identity type must be emitted (typed string alias).
+	assert.Contains(t, out, "Identity", "expected identity type in output")
+
+	// identityref leaf must NOT fall back to *string.
+	assert.NotContains(t, out, `*string`, "identityref must not emit *string")
+
+	// Derived const value must be present.
+	assert.Contains(t, out, "derived-one", "expected derived identity const value")
+
+	// String() method must be emitted.
+	assert.Contains(t, out, "func (v", "expected String() method in output")
+
+	// Generated output must be valid Go.
+	_, fmtErr := format.Source([]byte(out))
+	assert.NoError(t, fmtErr, "generated output must be valid Go source")
 }
 
 func TestIdentityrefCrossModule(t *testing.T) {
 	t.Parallel()
 
-	// Cross-module identityref base resolution requires a loader for import resolution.
-	// The compiler does not support resolving prefixed bases (bt:base-identity) without
-	// a loader. Use manually constructed schema.Module objects to represent the compiled
-	// state for stub purposes — the generator stub test fails on t.Fatal below.
-
+	// Build the base module with an identity hierarchy.
 	baseIdent := schema.NewIdentity("base-identity")
 	derivedIdent := schema.NewIdentity("derived-one")
 	derivedIdent.Bases = []string{"base-identity"}
 
 	baseModule := &schema.Module{
-		Name:       "base-types",
-		Namespace:  "urn:base-types",
-		Prefix:     "bt",
+		Name:      "base-types",
+		Namespace: "urn:base-types",
+		Prefix:    "bt",
 		Identities: map[string]*schema.Identity{
 			"base-identity": baseIdent,
 			"derived-one":   derivedIdent,
 		},
 	}
 
+	// Build the consumer module referencing the base via a prefixed identityref.
 	leafType := schema.TypeDefinition{
 		Name:  "identityref",
-		Bases: []string{"base-types:base-identity"},
+		Bases: []string{"bt:base-identity"},
 	}
 	myLeaf := schema.NewLeaf("my-leaf", &leafType)
 	configContainer := schema.NewContainer("config")
@@ -85,6 +100,8 @@ func TestIdentityrefCrossModule(t *testing.T) {
 		Namespace: "urn:consumer-module",
 		Prefix:    "cm",
 		Nodes:     map[string]schema.Node{"config": configContainer},
+		// Imports maps the prefix used in identityref bases to the module name.
+		Imports: map[string]string{"bt": "base-types"},
 	}
 
 	gen := golang.New(&golang.Options{PackageName: "testpkg"})
@@ -92,5 +109,18 @@ func TestIdentityrefCrossModule(t *testing.T) {
 	err := gen.GenerateDevice([]*schema.Module{baseModule, consumerModule}, &buf)
 	require.NoError(t, err)
 
-	t.Fatal("not yet implemented")
+	out := buf.String()
+
+	// Identity type must be present in generated output.
+	assert.Contains(t, out, "Identity", "expected identity type in cross-module output")
+
+	// Derived identity value from the base module must appear as a const.
+	assert.Contains(t, out, "derived-one", "expected derived identity in cross-module output")
+
+	// identityref field must NOT fall back to *string.
+	assert.NotContains(t, out, `*string`, "identityref must not emit *string in cross-module output")
+
+	// Generated output must be valid Go.
+	_, fmtErr := format.Source([]byte(out))
+	assert.NoError(t, fmtErr, "generated cross-module output must be valid Go source")
 }
