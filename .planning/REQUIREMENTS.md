@@ -76,34 +76,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-01 | — | Pending |
-| COMP-02 | — | Pending |
-| COMP-03 | — | Pending |
-| COMP-04 | — | Pending |
-| COMP-05 | — | Pending |
-| COMP-06 | — | Pending |
-| COMP-07 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| GOGEN-01 | — | Pending |
-| GOGEN-02 | — | Pending |
-| GOGEN-03 | — | Pending |
-| GOGEN-04 | — | Pending |
-| PBGEN-01 | — | Pending |
-| PBGEN-02 | — | Pending |
-| PBGEN-03 | — | Pending |
-| PBGEN-04 | — | Pending |
-| API-01 | — | Pending |
-| API-02 | — | Pending |
-| API-03 | — | Pending |
-| API-04 | — | Pending |
+| COMP-01 | Phase 1 | Pending |
+| COMP-02 | Phase 1 | Pending |
+| COMP-03 | Phase 1 | Pending |
+| COMP-04 | Phase 1 | Pending |
+| COMP-05 | Phase 1 | Pending |
+| COMP-06 | Phase 1 | Pending |
+| COMP-07 | Phase 1 | Pending |
+| TEST-01 | Phase 2 | Pending |
+| TEST-02 | Phase 2 | Pending |
+| TEST-03 | Phase 2 | Pending |
+| GOGEN-01 | Phase 3 | Pending |
+| GOGEN-02 | Phase 3 | Pending |
+| GOGEN-03 | Phase 3 | Pending |
+| GOGEN-04 | Phase 3 | Pending |
+| PBGEN-01 | Phase 4 | Pending |
+| PBGEN-02 | Phase 4 | Pending |
+| PBGEN-03 | Phase 4 | Pending |
+| PBGEN-04 | Phase 4 | Pending |
+| API-01 | Phase 5 | Pending |
+| API-02 | Phase 5 | Pending |
+| API-03 | Phase 5 | Pending |
+| API-04 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 22 total
-- Mapped to phases: 0
-- Unmapped: 22 ⚠️
+- Mapped to phases: 22
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after initial definition*
+*Last updated: 2026-03-14 after roadmap creation*
