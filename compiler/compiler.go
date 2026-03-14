@@ -11,6 +11,22 @@ import (
 	"github.com/gotya/gotya/schema"
 )
 
+// Sentinel errors for compiler diagnostics. Use errors.Is to test for a specific condition.
+var (
+	ErrCircularTypedef  = errors.New("circular typedef")
+	ErrCircularUses     = errors.New("circular dependency in uses")
+	ErrAugmentNotFound  = errors.New("augment target not found")
+	ErrDuplicateIdent   = errors.New("duplicate identifier")
+	ErrListMissingKey   = errors.New("list key error")
+	ErrConfigBoundary   = errors.New("config boundary violation")
+	ErrInvalidDefault   = errors.New("invalid default value")
+	ErrMandatoryDefault = errors.New("mandatory leaf with default")
+	ErrTypeRestriction  = errors.New("invalid type restriction")
+	ErrIdentityrefBase  = errors.New("invalid identityref base")
+	ErrXPathSyntax      = errors.New("xpath syntax error")
+	ErrMaxErrors        = errors.New("compilation stopped: too many errors")
+)
+
 // ModuleLoader provides a way to load external modules and submodules.
 type ModuleLoader interface {
 	Load(name string) (*schema.Module, error)
@@ -19,7 +35,7 @@ type ModuleLoader interface {
 
 // Compiler orchestrates the conversion of an AST to a Schema tree.
 type Compiler struct {
-	errors             []string
+	errors             []error
 	maxErrors          int                // maximum errors before truncation; default 100
 	loader             ModuleLoader
 	groupings          map[string]ast.Statement // stores module-level groupings
@@ -41,7 +57,7 @@ type Options struct {
 // New creates a new Compiler instance.
 func New(opts *Options) *Compiler {
 	c := &Compiler{
-		errors:             make([]string, 0),
+		errors:             make([]error, 0),
 		maxErrors:          100,
 		groupings:          make(map[string]ast.Statement),
 		typedefs:           make(map[string]ast.Statement),
@@ -63,14 +79,14 @@ func New(opts *Options) *Compiler {
 	return c
 }
 
-// addError appends an error message, enforcing the maxErrors limit.
-func (c *Compiler) addError(msg string) {
-	if len(c.errors) > 0 && strings.HasPrefix(c.errors[len(c.errors)-1], "compilation stopped:") {
+// addError appends a sentinel-wrapped error, enforcing the maxErrors limit.
+func (c *Compiler) addError(sentinel error, msg string) {
+	if len(c.errors) > 0 && errors.Is(c.errors[len(c.errors)-1], ErrMaxErrors) {
 		return // already truncated; drop silently
 	}
-	c.errors = append(c.errors, msg)
+	c.errors = append(c.errors, fmt.Errorf("%w: %s", sentinel, msg))
 	if len(c.errors) >= c.maxErrors {
-		c.errors = append(c.errors, fmt.Sprintf("compilation stopped: too many errors (limit %d)", c.maxErrors))
+		c.errors = append(c.errors, fmt.Errorf("%w (limit %d)", ErrMaxErrors, c.maxErrors))
 	}
 }
 
@@ -114,7 +130,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 			if c.loader != nil {
 				_, err := c.loader.Load(moduleName)
 				if err != nil {
-					c.addError(fmt.Sprintf("failed to import module %s: %v", moduleName, err))
+					c.addError(ErrAugmentNotFound, fmt.Sprintf("failed to import module %s: %v", moduleName, err))
 				}
 			}
 		case "include":
@@ -126,7 +142,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 			if c.loader != nil {
 				subAST, err := c.loader.LoadAST(subName)
 				if err != nil {
-					c.addError(fmt.Sprintf("failed to include submodule %s: %v", subName, err))
+					c.addError(ErrAugmentNotFound, fmt.Sprintf("failed to include submodule %s: %v", subName, err))
 				} else {
 					// Merge submodule statements into our local processing slice, preserving the original AST
 					allStmts = append(allStmts, subAST.SubStatements()...)
@@ -175,7 +191,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 				mod.Identities[n.Name()] = n
 			default:
 				if err := mod.AddNode(node); err != nil {
-					c.addError(err.Error())
+					c.addError(ErrDuplicateIdent, err.Error())
 				}
 			}
 		}
@@ -192,7 +208,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 		progress = false
 		if iter >= maxIter {
 			for _, aug := range c.augments {
-				c.addError("augment target not found (loop cap reached): " + aug.Argument())
+				c.addError(ErrAugmentNotFound, "augment target not found (loop cap reached): "+aug.Argument())
 			}
 			c.augments = nil
 			break
@@ -224,7 +240,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	}
 
 	for _, aug := range c.augments {
-		c.addError("augment target not found: "+aug.Argument())
+		c.addError(ErrAugmentNotFound, "augment target not found: "+aug.Argument())
 	}
 
 	// 5. Global validation mapping RFC constraints
@@ -235,7 +251,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	// 5. Semantic Validation
 	validator := NewValidator(c, mod)
 	if err := validator.Validate(); err != nil {
-		c.addError(err.Error())
+		c.addError(ErrInvalidDefault, err.Error())
 	}
 
 	// 6. Feature Pruning
@@ -250,7 +266,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 	stampModuleName(mod.Nodes, mod.Name)
 
 	if len(c.errors) > 0 {
-		return mod, fmt.Errorf("compilation failed with %d errors:\n%s", len(c.errors), strings.Join(c.errors, "\n"))
+		return mod, fmt.Errorf("compilation failed with %d errors:\n%w", len(c.errors), errors.Join(c.errors...))
 	}
 	return mod, nil
 }
@@ -440,12 +456,12 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		c.parseChildren(rpcNode, stmt.SubStatements(), nil)
 		if rpcNode.GetChildren()["input"] == nil {
 			if err := rpcNode.AddChild(schema.NewInput()); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		}
 		if rpcNode.GetChildren()["output"] == nil {
 			if err := rpcNode.AddChild(schema.NewOutput()); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		}
 		node = rpcNode
@@ -455,12 +471,12 @@ func (c *Compiler) compileDataNode(stmt ast.Statement, parentConfig bool) schema
 		c.parseChildren(actionNode, stmt.SubStatements(), nil)
 		if actionNode.GetChildren()["input"] == nil {
 			if err := actionNode.AddChild(schema.NewInput()); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		}
 		if actionNode.GetChildren()["output"] == nil {
 			if err := actionNode.AddChild(schema.NewOutput()); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		}
 		node = actionNode
@@ -512,22 +528,22 @@ func (c *Compiler) validate(node schema.Node) {
 	switch n := node.(type) {
 	case *schema.List:
 		if n.Config() && len(n.Keys) == 0 {
-			c.addError("list "+n.Name()+" must have at least one key if it is configuration data")
+			c.addError(ErrListMissingKey, "list "+n.Name()+" must have at least one key if it is configuration data")
 		}
 		for _, keyName := range n.Keys {
 			childNode, exists := n.GetChildren()[keyName]
 			if !exists {
-				c.addError(fmt.Sprintf("key '%s' not found in list '%s'", keyName, n.Name()))
+				c.addError(ErrListMissingKey, fmt.Sprintf("key '%s' not found in list '%s'", keyName, n.Name()))
 				continue
 			}
 			if _, isLeaf := childNode.(*schema.Leaf); !isLeaf {
-				c.addError(fmt.Sprintf("key '%s' in list '%s' must be a leaf", keyName, n.Name()))
+				c.addError(ErrListMissingKey, fmt.Sprintf("key '%s' in list '%s' must be a leaf", keyName, n.Name()))
 			}
 		}
 	case *schema.Leaf:
 		c.validateType(n.Name(), &n.Type)
 		if n.Mandatory && n.Default != nil {
-			c.addError(fmt.Sprintf("leaf '%s' is mandatory and cannot have a default value", n.Name()))
+			c.addError(ErrMandatoryDefault, fmt.Sprintf("leaf '%s' is mandatory and cannot have a default value", n.Name()))
 		}
 	case *schema.LeafList:
 		c.validateType(n.Name(), &n.Type)
@@ -535,7 +551,7 @@ func (c *Compiler) validate(node schema.Node) {
 
 	for _, child := range node.GetChildren() {
 		if !node.Config() && child.Config() {
-			c.addError(fmt.Sprintf("node %s has 'config true' but its parent %s has 'config false'", child.Name(), node.Name()))
+			c.addError(ErrConfigBoundary, fmt.Sprintf("node %s has 'config true' but its parent %s has 'config false'", child.Name(), node.Name()))
 		}
 		c.validate(child)
 	}
@@ -544,12 +560,12 @@ func (c *Compiler) validate(node schema.Node) {
 func (c *Compiler) validateType(nodeName string, td *schema.TypeDefinition) {
 	if len(td.Length) > 0 {
 		if td.Name != "string" && td.Name != "binary" {
-			c.addError(fmt.Sprintf("type %s for node %s cannot have length restrictions", td.Name, nodeName))
+			c.addError(ErrTypeRestriction, fmt.Sprintf("type %s for node %s cannot have length restrictions", td.Name, nodeName))
 		}
 	}
 	if len(td.Pattern) > 0 {
 		if td.Name != "string" {
-			c.addError(fmt.Sprintf("type %s for node %s cannot have pattern restrictions", td.Name, nodeName))
+			c.addError(ErrTypeRestriction, fmt.Sprintf("type %s for node %s cannot have pattern restrictions", td.Name, nodeName))
 		}
 	}
 	if len(td.Range) > 0 {
@@ -557,7 +573,7 @@ func (c *Compiler) validateType(nodeName string, td *schema.TypeDefinition) {
 		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "decimal64":
 			// Valid
 		default:
-			c.addError(fmt.Sprintf("type %s for node %s cannot have range restrictions", td.Name, nodeName))
+			c.addError(ErrTypeRestriction, fmt.Sprintf("type %s for node %s cannot have range restrictions", td.Name, nodeName))
 		}
 	}
 }
@@ -634,7 +650,7 @@ func (c *Compiler) applyDeviations(mod *schema.Module) {
 	for _, dev := range mod.Deviations {
 		target := c.findNode(mod, dev.Name())
 		if target == nil {
-			c.addError(fmt.Sprintf("deviation target node %s not found", dev.Name()))
+			c.addError(ErrAugmentNotFound, fmt.Sprintf("deviation target node %s not found", dev.Name()))
 			continue
 		}
 
@@ -761,14 +777,14 @@ func (c *Compiler) parseChildren(parent schema.Node, stmts []ast.Statement, visi
 					caseNode := schema.NewCase(child.Name())
 					caseNode.SetConfig(child.Config())
 					if err := caseNode.AddChild(child); err != nil {
-					c.addError(err.Error())
-				}
+						c.addError(ErrDuplicateIdent, err.Error())
+					}
 					child = caseNode
 				}
 			}
 
 			if err := parent.AddChild(child); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		}
 	}
@@ -834,7 +850,7 @@ func (c *Compiler) getType(stmts []ast.Statement, visited map[string]bool) schem
 					visited = make(map[string]bool)
 				}
 				if visited[td.Name] {
-					c.addError("circular typedef detected: " + td.Name)
+					c.addError(ErrCircularTypedef, "circular typedef detected: "+td.Name)
 					return td
 				}
 				visited[td.Name] = true
@@ -921,7 +937,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 		visited = make(map[string]bool)
 	}
 	if visited[groupName] {
-		c.addError("circular dependency detected in uses: "+groupName)
+		c.addError(ErrCircularUses, "circular dependency detected in uses: "+groupName)
 		return
 	}
 	visited[groupName] = true
@@ -973,7 +989,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 	}
 
 	if grpAST == nil {
-		c.addError("grouping not found: "+groupName)
+		c.addError(ErrAugmentNotFound, "grouping not found: "+groupName)
 		return
 	}
 
@@ -998,7 +1014,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 			if targetNode != nil {
 				c.applyRefine(targetNode, sub)
 			} else {
-				c.addError("refine target not found: "+targetPath)
+				c.addError(ErrAugmentNotFound, "refine target not found: "+targetPath)
 			}
 		} else if sub.Keyword() == "augment" {
 			targetPath := sub.Argument()
@@ -1006,7 +1022,7 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 			if targetNode != nil {
 				c.parseChildren(targetNode, sub.SubStatements(), visited)
 			} else {
-				c.addError("uses augment target not found: "+targetPath)
+				c.addError(ErrAugmentNotFound, "uses augment target not found: "+targetPath)
 			}
 		}
 	}
@@ -1014,11 +1030,11 @@ func (c *Compiler) resolveUses(stmt ast.Statement, localGroupings map[string]ast
 	for _, child := range temp.GetChildren() {
 		if mod != nil {
 			if err := mod.AddNode(child); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		} else if parent != nil {
 			if err := parent.AddChild(child); err != nil {
-				c.addError(err.Error())
+				c.addError(ErrDuplicateIdent, err.Error())
 			}
 		}
 	}
