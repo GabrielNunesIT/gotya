@@ -67,7 +67,14 @@ Plans:
   2. A YANG module containing `anydata` or `anyxml` nodes generates a Go field (e.g., `json.RawMessage`) for each — no nodes are silently dropped from the generated struct
   3. A YANG module containing `rpc`, `action`, or `notification` statements generates typed Go request/response structs for each — input and output containers appear as nested struct types accessible to the caller
   4. A vendor YANG module that applies deviations generates Go output that reflects the deviated schema (removed nodes absent, replaced types updated) — the generated code matches what the device actually supports
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Write failing test stubs for all 4 Go generator gaps (Wave 1, TDD RED)
+- [ ] 03-02-PLAN.md — GOGEN-02: emit json.RawMessage for anydata/anyxml nodes
+- [ ] 03-03-PLAN.md — GOGEN-03: emit typed Input/Output/Notification structs for rpc/action/notification
+- [ ] 03-04-PLAN.md — GOGEN-04: deviation pre-pass (applyDeviations) before code generation
+- [ ] 03-05-PLAN.md — GOGEN-01: identityref typed const blocks with cross-module resolution
 
 ### Phase 4: Protobuf Generator
 **Goal**: The Protobuf generator produces correct, complete output for all YANG constructs relevant to a network management gRPC service, with all gaps explicitly documented
@@ -99,6 +106,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Compiler Correctness | 4/4 | Complete    | 2026-03-14 |
 | 2. Testing Infrastructure | 3/3 | Complete    | 2026-03-14 |
-| 3. Go Generator | 0/TBD | Not started | - |
+| 3. Go Generator | 0/5 | Not started | - |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
 | 5. Public API Stabilization | 0/TBD | Not started | - |
