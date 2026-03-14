@@ -250,9 +250,7 @@ func (c *Compiler) Compile(astMod *ast.Module) (*schema.Module, error) {
 
 	// 5. Semantic Validation
 	validator := NewValidator(c, mod)
-	if err := validator.Validate(); err != nil {
-		c.addError(ErrInvalidDefault, err.Error())
-	}
+	validator.Validate() //nolint:errcheck // errors reported directly via c.addError
 
 	// 6. Feature Pruning
 	if len(c.supportedFeatures) > 0 {
