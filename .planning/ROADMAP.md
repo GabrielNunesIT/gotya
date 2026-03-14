@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Compiler Correctness** - Eliminate all crash-class bugs so the compiler handles any malformed or pathological YANG input gracefully (completed 2026-03-14)
 - [x] **Phase 2: Testing Infrastructure** - Add corpus smoke test, golden file harness, and structured error sentinels so every future change is locked in by tests (completed 2026-03-14)
-- [ ] **Phase 3: Go Generator** - Audit and fill Go generator gaps so all YANG statement types produce valid, correct Go output
+- [x] **Phase 3: Go Generator** - Audit and fill Go generator gaps so all YANG statement types produce valid, correct Go output (completed 2026-03-14)
 - [ ] **Phase 4: Protobuf Generator** - Audit and fill Protobuf generator gaps so all relevant YANG constructs produce valid Proto output
 - [ ] **Phase 5: Public API Stabilization** - Harden the public API surface before v1 tag so it can be depended on without a future major version bump
 
@@ -106,6 +106,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Compiler Correctness | 4/4 | Complete    | 2026-03-14 |
 | 2. Testing Infrastructure | 3/3 | Complete    | 2026-03-14 |
-| 3. Go Generator | 3/5 | In Progress|  |
+| 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
 | 5. Public API Stabilization | 0/TBD | Not started | - |
