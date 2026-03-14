@@ -92,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compiler Correctness | 1/4 | In Progress|  |
+| 1. Compiler Correctness | 2/4 | In Progress|  |
 | 2. Testing Infrastructure | 0/TBD | Not started | - |
 | 3. Go Generator | 0/TBD | Not started | - |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
