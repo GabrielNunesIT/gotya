@@ -2,6 +2,7 @@ package golang_test
 
 import (
 	"bytes"
+	"go/format"
 	"testing"
 
 	"github.com/gotya/gotya/compiler"
@@ -9,6 +10,7 @@ import (
 	"github.com/gotya/gotya/parser"
 	"github.com/gotya/gotya/parser/lexer"
 	"github.com/gotya/gotya/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +49,17 @@ module test-rpc {
 	err = gen.GenerateDevice([]*schema.Module{schemaMod}, &buf)
 	require.NoError(t, err)
 
-	t.Fatal("not yet implemented")
+	out := buf.String()
+
+	// Verify the output is valid Go (GenerateDevice already applies format.Source
+	// internally, but we assert here for clarity).
+	_, fmtErr := format.Source([]byte(out))
+	assert.NoError(t, fmtErr, "generated output must be valid Go")
+
+	assert.Contains(t, out, "ResetCountersInput")
+	assert.Contains(t, out, "ResetCountersOutput")
+	assert.Contains(t, out, "Target")  // field from input
+	assert.Contains(t, out, "Status")  // field from output
 }
 
 func TestAction(t *testing.T) {
@@ -87,7 +99,13 @@ module test-action {
 	err = gen.GenerateDevice([]*schema.Module{schemaMod}, &buf)
 	require.NoError(t, err)
 
-	t.Fatal("not yet implemented")
+	out := buf.String()
+
+	_, fmtErr := format.Source([]byte(out))
+	assert.NoError(t, fmtErr, "generated output must be valid Go")
+
+	assert.Contains(t, out, "PingInput")
+	assert.Contains(t, out, "PingOutput")
 }
 
 func TestNotification(t *testing.T) {
@@ -118,5 +136,11 @@ module test-notification {
 	err = gen.GenerateDevice([]*schema.Module{schemaMod}, &buf)
 	require.NoError(t, err)
 
-	t.Fatal("not yet implemented")
+	out := buf.String()
+
+	_, fmtErr := format.Source([]byte(out))
+	assert.NoError(t, fmtErr, "generated output must be valid Go")
+
+	assert.Contains(t, out, "LinkUpNotification")
+	assert.Contains(t, out, "InterfaceName")
 }
