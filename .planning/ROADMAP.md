@@ -106,6 +106,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Compiler Correctness | 4/4 | Complete    | 2026-03-14 |
 | 2. Testing Infrastructure | 3/3 | Complete    | 2026-03-14 |
-| 3. Go Generator | 1/5 | In Progress|  |
+| 3. Go Generator | 2/5 | In Progress|  |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
 | 5. Public API Stabilization | 0/TBD | Not started | - |
