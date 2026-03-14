@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 03-go-generator/03-03-PLAN.md
-last_updated: "2026-03-14T22:02:54.883Z"
+stopped_at: Completed 03-go-generator/03-04-PLAN.md
+last_updated: "2026-03-14T22:07:15.287Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-go-generator P01 | 12min | 2 tasks | 4 files |
 | Phase 03-go-generator P02 | 10min | 2 tasks | 2 files |
 | Phase 03-go-generator P03 | 5min | 2 tasks | 2 files |
+| Phase 03-go-generator P04 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase 03-go-generator]: json.RawMessage (not pointer) for AnyData/AnyXML — already a slice/reference type
 - [Phase 03-go-generator]: hasValidNodes returns true for RPC/Action/Notification so containers with only action children are visited; generateField and module struct loop skip them to avoid bogus *string fields
 - [Phase 03-go-generator]: generateStruct has dedicated Action pass iterating children map for *schema.Action — RFC 7950 §7.15 actions attach to data nodes not module root
+- [Phase 03-go-generator]: applyDeviations pre-pass runs before generateNode calls — RFC 7950 §7.12 ordering satisfied by calling at start of GenerateDevice
+- [Phase 03-go-generator]: Lenient path resolution: unresolvable deviation paths skipped with no error — v1 tolerance for incomplete module graphs
+- [Phase 03-go-generator]: deviate add/delete are no-ops for v1 — constraints not emitted as Go code; no observable generation effect
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T22:02:54.882Z
-Stopped at: Completed 03-go-generator/03-03-PLAN.md
+Last session: 2026-03-14T22:07:15.286Z
+Stopped at: Completed 03-go-generator/03-04-PLAN.md
 Resume file: None
