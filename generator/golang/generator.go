@@ -116,6 +116,13 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 	// to prevent duplicate struct / union-type declarations in the same file.
 	visited := make(map[string]bool)
 
+	// Apply deviation pre-pass for each module before code generation.
+	for _, mod := range modules {
+		if err := applyDeviations(mod); err != nil {
+			return fmt.Errorf("applyDeviations: %w", err)
+		}
+	}
+
 	for _, treeType := range []string{"Config", "State"} {
 		configOnly := (treeType == "Config")
 
@@ -701,6 +708,85 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 		return fmt.Errorf("write err: %w", err)
 	}
 	return nil
+}
+
+// applyDeviations applies YANG deviation statements to mod's node tree in place.
+// This must be called before any generateNode invocations.
+// RFC 7950 §7.12: deviations are applied after augment resolution, which already
+// ran at compile time, so calling this at the start of GenerateDevice is correct.
+func applyDeviations(mod *schema.Module) error {
+	for _, dev := range mod.Deviations {
+		// Resolve the target path to (parentChildren map, targetKey string)
+		parentChildren, targetKey, err := resolveDeviationPath(mod, dev.Name())
+		if err != nil {
+			// Unresolvable deviation path — skip with no error (lenient for v1)
+			continue
+		}
+
+		// Apply each deviate kind
+		if _, ok := dev.Deviates["not-supported"]; ok {
+			delete(parentChildren, targetKey)
+			continue // node removed; no further deviate kinds apply
+		}
+
+		targetNode, exists := parentChildren[targetKey]
+		if !exists {
+			continue
+		}
+
+		// deviate replace
+		for _, stmt := range dev.Deviates["replace"] {
+			if stmt.Keyword() == "type" {
+				if leaf, ok := targetNode.(*schema.Leaf); ok {
+					leaf.Type.Name = stmt.Argument()
+				}
+			}
+			// Other replace sub-statements (default, mandatory, etc.) — v1: no-op
+		}
+
+		// deviate add / deviate delete — v1: no-op (constraints not emitted as Go)
+	}
+	return nil
+}
+
+// resolveDeviationPath walks mod to find the parent children map and target node key
+// for a YANG deviation target path like "/prefix:container/prefix:leaf".
+// Returns (parentMap, targetKey, error).
+func resolveDeviationPath(mod *schema.Module, path string) (map[string]schema.Node, string, error) {
+	// Strip leading "/" and split on "/"
+	path = strings.TrimPrefix(path, "/")
+	segments := strings.Split(path, "/")
+	if len(segments) == 0 {
+		return nil, "", fmt.Errorf("empty deviation path")
+	}
+
+	// Strip module prefix from each segment: "prefix:name" → "name"
+	stripPrefix := func(s string) string {
+		if idx := strings.Index(s, ":"); idx >= 0 {
+			return s[idx+1:]
+		}
+		return s
+	}
+
+	// Navigate from mod.Nodes
+	current := mod.Nodes
+	for i, seg := range segments {
+		key := stripPrefix(seg)
+		if i == len(segments)-1 {
+			// Last segment — return parent map and key
+			return current, key, nil
+		}
+		node, ok := current[key]
+		if !ok {
+			return nil, "", fmt.Errorf("deviation path segment %q not found", key)
+		}
+		base := node.GetBase()
+		if base.Children == nil {
+			return nil, "", fmt.Errorf("deviation path segment %q has no children", key)
+		}
+		current = base.Children
+	}
+	return current, stripPrefix(segments[len(segments)-1]), nil
 }
 
 func toCamelCaseTitle(s string) string {
