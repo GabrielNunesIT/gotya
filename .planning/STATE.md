@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 01-compiler-correctness/01-03-PLAN.md
-last_updated: "2026-03-14T17:08:52.182Z"
+stopped_at: Completed 01-compiler-correctness/01-02-PLAN.md
+last_updated: "2026-03-14T17:09:40.880Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-compiler-correctness P01 | 1 | 2 tasks | 2 files |
 | Phase 01-compiler-correctness P03 | 1min | 2 tasks | 2 files |
+| Phase 01-compiler-correctness P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - [Phase 01-compiler-correctness]: cmd/gotya/loader_test.go uses package main_test because cmd/gotya is package main
 - [Phase 01-compiler-correctness]: inProgress guard: defer delete(inProgress,name) ensures cleanup on all return paths
 - [Phase 01-compiler-correctness]: loader_test.go changed from package main_test to package main — main packages cannot be imported by external test packages
+- [Phase 01-compiler-correctness]: fmt import retained in compiler.go — fmt.Sprintf/fmt.Errorf still in use; only two Printf debug lines removed
+- [Phase 01-compiler-correctness]: compile() test helper added to compiler_test.go — lexer->parser->compiler.New(nil).Compile() pattern
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T17:08:52.181Z
-Stopped at: Completed 01-compiler-correctness/01-03-PLAN.md
+Last session: 2026-03-14T17:09:40.879Z
+Stopped at: Completed 01-compiler-correctness/01-02-PLAN.md
 Resume file: None
