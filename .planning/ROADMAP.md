@@ -17,7 +17,7 @@ coherent, independently verifiable capability that unblocks the next.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Compiler Correctness** - Eliminate all crash-class bugs so the compiler handles any malformed or pathological YANG input gracefully
+- [x] **Phase 1: Compiler Correctness** - Eliminate all crash-class bugs so the compiler handles any malformed or pathological YANG input gracefully (completed 2026-03-14)
 - [ ] **Phase 2: Testing Infrastructure** - Add corpus smoke test, golden file harness, and structured error sentinels so every future change is locked in by tests
 - [ ] **Phase 3: Go Generator** - Audit and fill Go generator gaps so all YANG statement types produce valid, correct Go output
 - [ ] **Phase 4: Protobuf Generator** - Audit and fill Protobuf generator gaps so all relevant YANG constructs produce valid Proto output
@@ -92,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compiler Correctness | 3/4 | In Progress|  |
+| 1. Compiler Correctness | 4/4 | Complete   | 2026-03-14 |
 | 2. Testing Infrastructure | 0/TBD | Not started | - |
 | 3. Go Generator | 0/TBD | Not started | - |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
