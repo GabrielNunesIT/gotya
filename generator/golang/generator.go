@@ -29,7 +29,9 @@ type Options struct {
 
 // GoGenerator implements the generator.Generator interface for Go struct generation.
 type GoGenerator struct {
-	Options *Options
+	Options        *Options
+	currentModules []*schema.Module // set at start of GenerateDevice, cleared at end
+	currentModule  *schema.Module   // set per module in the GenerateDevice module loop
 }
 
 // New creates a new GoGenerator instance.
@@ -112,6 +114,10 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 		return fmt.Errorf("failed to write package header: %w", err)
 	}
 
+	// Store modules slice for cross-module identity resolution.
+	g.currentModules = modules
+	defer func() { g.currentModules = nil; g.currentModule = nil }()
+
 	// visited tracks generated type names across both Config and State passes
 	// to prevent duplicate struct / union-type declarations in the same file.
 	visited := make(map[string]bool)
@@ -187,6 +193,7 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 
 		// Now generate each Module Struct
 		for _, mod := range modules {
+			g.currentModule = mod // set for cross-module identity resolution in generateField
 			hasValid := false
 			for _, node := range mod.Nodes {
 				if g.hasValidNodes(node, configOnly) {
@@ -236,7 +243,11 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 				goType := "*string" // Default placeholder
 				switch n := node.(type) {
 				case *schema.Leaf:
-					goType = mapYANGTypeToGo(n.Type.Name)
+					if n.Type.Name == "identityref" && len(n.Type.Bases) > 0 {
+						goType = "*" + g.resolveIdentityGoType(n.Type.Bases[0], mod, prefix)
+					} else {
+						goType = mapYANGTypeToGo(n.Type.Name)
+					}
 				case *schema.LeafList:
 					goType = "[]" + mapYANGTypeToGo(n.Type.Name)
 				case *schema.Container:
@@ -323,7 +334,14 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 	case *schema.List:
 		return g.generateStruct(n.Name()+"Entry", n.Description, n.Children, "list", w, visited, prefix, suffix, namespace, configOnly)
 	case *schema.Leaf:
-		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
+		if n.Type.Name == "identityref" && len(n.Type.Bases) > 0 {
+			base := n.Type.Bases[0]
+			rootName, identMod, identModPrefix := g.resolveIdentityModuleAndRoot(base, g.currentModule)
+			if err := g.generateIdentityConsts(rootName, identMod, identModPrefix, w, visited); err != nil {
+				return err
+			}
+			return nil // type alias declaration emitted; no nested struct
+		} else if n.Type.Name == "union" && len(n.Type.Members) > 0 {
 			ut := unionGoTypeName(prefix, n.Name())
 			if !visited[ut] {
 				visited[ut] = true
@@ -641,7 +659,15 @@ func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffi
 
 	switch n := node.(type) {
 	case *schema.Leaf:
-		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
+		if n.Type.Name == "identityref" && len(n.Type.Bases) > 0 {
+			base := n.Type.Bases[0]
+			mod := g.currentModule
+			identPrefix := prefix
+			if mod != nil {
+				_, _, identPrefix = g.resolveIdentityModuleAndRoot(base, mod)
+			}
+			goType = "*" + g.resolveIdentityGoType(base, mod, identPrefix)
+		} else if n.Type.Name == "union" && len(n.Type.Members) > 0 {
 			goType = "*" + unionGoTypeName(prefix, n.Name())
 		} else if n.Type.Name == "bits" && len(n.Type.Bits) > 0 {
 			if n.Type.TypedefName != "" {
@@ -868,6 +894,128 @@ func mapYANGTypeToGoBase(yangType string) string {
 	default:
 		return "string"
 	}
+}
+
+// identityGoTypeName generates the Go type name for an identity type.
+// Format: modulePrefix + toCamelCaseTitle(identityName) + "Identity"
+func identityGoTypeName(modulePrefix, identityName string) string {
+	return modulePrefix + toCamelCaseTitle(identityName) + "Identity"
+}
+
+// resolveIdentityModuleAndRoot resolves a (possibly prefixed) identity base reference
+// to (rootLocalName, targetModule, modulePrefix). Uses g.currentModules for cross-module lookup.
+func (g *GoGenerator) resolveIdentityModuleAndRoot(base string, mod *schema.Module) (string, *schema.Module, string) {
+	rootName := base
+	identMod := mod
+	identModPrefix := ""
+	if mod != nil {
+		identModPrefix = toCamelCaseTitle(mod.Name)
+	}
+
+	if idx := strings.Index(base, ":"); idx >= 0 {
+		pfx := base[:idx]
+		rootName = base[idx+1:]
+		if mod != nil && mod.Imports != nil {
+			if targetModName, ok := mod.Imports[pfx]; ok {
+				for _, m := range g.currentModules {
+					if m.Name == targetModName {
+						identMod = m
+						identModPrefix = toCamelCaseTitle(m.Name)
+						break
+					}
+				}
+			}
+		}
+	}
+	return rootName, identMod, identModPrefix
+}
+
+// resolveIdentityGoType returns the Go type name for an identityref base.
+// If mod is nil, uses prefix as-is and rootName from base.
+func (g *GoGenerator) resolveIdentityGoType(base string, mod *schema.Module, prefix string) string {
+	rootName, _, identModPrefix := g.resolveIdentityModuleAndRoot(base, mod)
+	if mod == nil {
+		// fallback: strip prefix if present
+		if idx := strings.Index(base, ":"); idx >= 0 {
+			rootName = base[idx+1:]
+		} else {
+			rootName = base
+		}
+		return identityGoTypeName(prefix, rootName)
+	}
+	return identityGoTypeName(identModPrefix, rootName)
+}
+
+// generateIdentityConsts emits a typed string type and const block for an identity hierarchy.
+// visited prevents duplicate emission when multiple leaves reference the same base.
+func (g *GoGenerator) generateIdentityConsts(
+	rootName string,
+	identMod *schema.Module,
+	modulePrefix string,
+	w io.Writer,
+	visited map[string]bool,
+) error {
+	typeName := identityGoTypeName(modulePrefix, rootName)
+	if visited[typeName] {
+		return nil
+	}
+	visited[typeName] = true
+
+	// BFS: collect all identity names in identMod that derive from rootName (transitively).
+	derived := []string{}
+	if identMod != nil && identMod.Identities != nil {
+		queue := []string{rootName}
+		seen := map[string]bool{rootName: true}
+		for len(queue) > 0 {
+			current := queue[0]
+			queue = queue[1:]
+			for name, id := range identMod.Identities {
+				if seen[name] {
+					continue
+				}
+				for _, b := range id.Bases {
+					localBase := b
+					if idx := strings.Index(b, ":"); idx >= 0 {
+						localBase = b[idx+1:]
+					}
+					if localBase == current {
+						derived = append(derived, name)
+						seen[name] = true
+						queue = append(queue, name)
+						break
+					}
+				}
+			}
+		}
+		sort.Strings(derived)
+	}
+
+	// Emit type declaration.
+	if _, err := fmt.Fprintf(w, "// %s represents a YANG identity derived from %s.\ntype %s string\n\n", typeName, rootName, typeName); err != nil {
+		return fmt.Errorf("write err: %w", err)
+	}
+
+	// Emit const block (only if there are derived identities).
+	if len(derived) > 0 {
+		if _, err := fmt.Fprintf(w, "const (\n"); err != nil {
+			return fmt.Errorf("write err: %w", err)
+		}
+		for _, d := range derived {
+			constName := typeName + toCamelCaseTitle(d)
+			if _, err := fmt.Fprintf(w, "\t%s %s = %q\n", constName, typeName, d); err != nil {
+				return fmt.Errorf("write err: %w", err)
+			}
+		}
+		if _, err := fmt.Fprintf(w, ")\n\n"); err != nil {
+			return fmt.Errorf("write err: %w", err)
+		}
+	}
+
+	// Emit String() method.
+	if _, err := fmt.Fprintf(w, "func (v %s) String() string { return string(v) }\n\n", typeName); err != nil {
+		return fmt.Errorf("write err: %w", err)
+	}
+	return nil
 }
 
 func (g *GoGenerator) generateValidationChecks(structName string, flatNodes []schema.Node, w io.Writer) error {
