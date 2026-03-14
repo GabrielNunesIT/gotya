@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-03-14T12:13:51.408Z"
+stopped_at: Completed 01-compiler-correctness/01-01-PLAN.md
+last_updated: "2026-03-14T17:06:20.728Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01-compiler-correctness P01 | 1 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - [Pre-phase]: Multi-stage compiler (lexer→parser→AST→schema) — clean separation, testable at each layer
 - [Pre-phase]: Error accumulation over fail-fast — unbounded accumulation is a known bug (COMP-07 addresses it)
 - [Pre-phase]: No new dependencies — stdlib patterns for golden file testing and go/format.Source() preferred
+- [Phase 01-compiler-correctness]: Used t.Fatal("not yet implemented") as stub body — no imports needed, unambiguous RED signal
+- [Phase 01-compiler-correctness]: cmd/gotya/loader_test.go uses package main_test because cmd/gotya is package main
 
 ### Pending Todos
 
@@ -74,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-14T12:13:51.400Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-testing-infrastructure/02-CONTEXT.md
+Last session: 2026-03-14T17:06:20.727Z
+Stopped at: Completed 01-compiler-correctness/01-01-PLAN.md
+Resume file: None

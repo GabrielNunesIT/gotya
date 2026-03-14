@@ -7,13 +7,13 @@
 
 ### Compiler Correctness
 
-- [ ] **COMP-01**: Library never panics or crashes on malformed YANG input — nil pointer dereference on `findNode()` return values guarded with proper error propagation
-- [ ] **COMP-02**: Circular typedef definitions (A uses B uses A) produce a compile error, not a stack overflow — `getType()` has a visited set and depth limit
-- [ ] **COMP-03**: Circular module imports produce a compile error, not infinite recursion — loader has an in-progress set for cycle detection
-- [ ] **COMP-04**: Augment resolution verifies all augments applied — loop has a max-iteration cap and a post-loop assertion that `pendingAugments` is empty
-- [ ] **COMP-05**: All `AddChild()` failures propagate as errors — no `_ = AddChild(...)` call sites remain; RPC, Action, and Case nodes report duplicate identifier errors
-- [ ] **COMP-06**: Library emits nothing to stdout or stderr during normal operation — all `fmt.Printf("DEBUG ...`)` calls removed from production code paths
-- [ ] **COMP-07**: Compiler error accumulation is bounded — `compiler.Options` has a `MaxErrors` field (default 100); compilation stops after limit with truncation message
+- [x] **COMP-01**: Library never panics or crashes on malformed YANG input — nil pointer dereference on `findNode()` return values guarded with proper error propagation
+- [x] **COMP-02**: Circular typedef definitions (A uses B uses A) produce a compile error, not a stack overflow — `getType()` has a visited set and depth limit
+- [x] **COMP-03**: Circular module imports produce a compile error, not infinite recursion — loader has an in-progress set for cycle detection
+- [x] **COMP-04**: Augment resolution verifies all augments applied — loop has a max-iteration cap and a post-loop assertion that `pendingAugments` is empty
+- [x] **COMP-05**: All `AddChild()` failures propagate as errors — no `_ = AddChild(...)` call sites remain; RPC, Action, and Case nodes report duplicate identifier errors
+- [x] **COMP-06**: Library emits nothing to stdout or stderr during normal operation — all `fmt.Printf("DEBUG ...`)` calls removed from production code paths
+- [x] **COMP-07**: Compiler error accumulation is bounded — `compiler.Options` has a `MaxErrors` field (default 100); compilation stops after limit with truncation message
 
 ### Testing Infrastructure
 
@@ -76,13 +76,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-01 | Phase 1 | Pending |
-| COMP-02 | Phase 1 | Pending |
-| COMP-03 | Phase 1 | Pending |
-| COMP-04 | Phase 1 | Pending |
-| COMP-05 | Phase 1 | Pending |
-| COMP-06 | Phase 1 | Pending |
-| COMP-07 | Phase 1 | Pending |
+| COMP-01 | Phase 1 | Complete |
+| COMP-02 | Phase 1 | Complete |
+| COMP-03 | Phase 1 | Complete |
+| COMP-04 | Phase 1 | Complete |
+| COMP-05 | Phase 1 | Complete |
+| COMP-06 | Phase 1 | Complete |
+| COMP-07 | Phase 1 | Complete |
 | TEST-01 | Phase 2 | Pending |
 | TEST-02 | Phase 2 | Pending |
 | TEST-03 | Phase 2 | Pending |
