@@ -80,6 +80,10 @@ func (g *GoGenerator) hasValidNodes(node schema.Node, configOnly bool) bool {
 	switch n := node.(type) {
 	case *schema.Leaf, *schema.LeafList, *schema.AnyXML, *schema.AnyData:
 		return true
+	case *schema.RPC, *schema.Action, *schema.Notification:
+		// RPC/Action/Notification are not data nodes but signal that the parent
+		// has content worthy of processing (so containers with only actions are visited).
+		return true
 	case *schema.Container:
 		for _, child := range getFlatDataNodes(n.Children) {
 			if g.hasValidNodes(child, configOnly) {
@@ -211,6 +215,12 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 
 			prefix := toCamelCaseTitle(mod.Name)
 			for _, node := range modTopNodes {
+				// RPC/Action/Notification are not fields in the module struct;
+				// they are emitted as standalone structs in the post-loop pass.
+				switch node.(type) {
+				case *schema.RPC, *schema.Action, *schema.Notification:
+					continue
+				}
 				// Handle 'Validate' collision when generating the struct fields directly
 				fieldName := toCamelCaseTitle(node.Name())
 				if fieldName == "Validate" {
@@ -267,6 +277,21 @@ func (g *GoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) erro
 
 			for _, node := range modTopNodes {
 				if err := g.generateNode(node, &buf, visited, prefix, treeType, mod.Namespace, configOnly); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Post-loop pass: emit RPC/Action/Notification structs once per module,
+	// outside the Config+State duplication loop. The visited map prevents duplicates.
+	for _, mod := range modules {
+		prefix := toCamelCaseTitle(mod.Name)
+		for _, name := range getOrderedChildNames(mod.Nodes) {
+			node := mod.Nodes[name]
+			switch node.(type) {
+			case *schema.RPC, *schema.Action, *schema.Notification:
+				if err := g.generateNode(node, &buf, visited, prefix, "", mod.Namespace, false); err != nil {
 					return err
 				}
 			}
@@ -372,6 +397,69 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 		}
 	case *schema.AnyData, *schema.AnyXML:
 		return nil
+	case *schema.RPC, *schema.Action:
+		rpcPrefix := prefix + toCamelCaseTitle(n.Name())
+		// Emit Input struct
+		if inputNode, ok := n.GetBase().Children["input"]; ok {
+			if inp, ok2 := inputNode.(*schema.Input); ok2 {
+				inputStructName := rpcPrefix + "Input"
+				if !visited[inputStructName] {
+					visited[inputStructName] = true
+					if err := g.generateRPCStruct(inputStructName, inp.Children, w); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		// Emit Output struct
+		if outputNode, ok := n.GetBase().Children["output"]; ok {
+			if out, ok2 := outputNode.(*schema.Output); ok2 {
+				outputStructName := rpcPrefix + "Output"
+				if !visited[outputStructName] {
+					visited[outputStructName] = true
+					if err := g.generateRPCStruct(outputStructName, out.Children, w); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	case *schema.Notification:
+		notifStructName := prefix + toCamelCaseTitle(n.Name()) + "Notification"
+		if !visited[notifStructName] {
+			visited[notifStructName] = true
+			if err := g.generateRPCStruct(notifStructName, n.GetBase().Children, w); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
+// generateRPCStruct emits a top-level Go struct for an RPC input, output, or notification.
+// Children are sorted by name for deterministic output.
+func (g *GoGenerator) generateRPCStruct(structName string, children map[string]schema.Node, w io.Writer) error {
+	if _, err := fmt.Fprintf(w, "// %s represents an RPC/action/notification data structure.\ntype %s struct {\n", structName, structName); err != nil {
+		return fmt.Errorf("write err: %w", err)
+	}
+
+	// Sort children by name for deterministic output
+	names := make([]string, 0, len(children))
+	for name := range children {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		child := children[name]
+		if err := g.generateField(child, w, "", "", ""); err != nil {
+			return err
+		}
+	}
+
+	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
+		return fmt.Errorf("write err: %w", err)
 	}
 	return nil
 }
@@ -515,11 +603,29 @@ func (g *GoGenerator) generateStruct(name string, description *string, children 
 			}
 		}
 	}
+	// Emit Action structs attached to this container/list node.
+	// Actions are RFC 7950 §7.15 — attached to data nodes, not to the module root.
+	// They do not appear as data fields but their Input/Output structs must be emitted.
+	for _, name := range getOrderedChildNames(children) {
+		child := children[name]
+		if _, ok := child.(*schema.Action); ok {
+			if err := g.generateNode(child, w, visited, prefix, suffix, namespace, configOnly); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
 //nolint:dupl // leaf and leaf-list share the same type resolution logic
 func (g *GoGenerator) generateField(node schema.Node, w io.Writer, prefix, suffix, namespace string) error {
+	// RPC/Action/Notification nodes are not fields in their parent struct.
+	// They are emitted as standalone structs by generateRPCStruct/generateNode.
+	switch node.(type) {
+	case *schema.RPC, *schema.Action, *schema.Notification:
+		return nil
+	}
+
 	fieldName := toCamelCaseTitle(node.Name())
 	if fieldName == "Validate" {
 		fieldName = "ValidateField"
