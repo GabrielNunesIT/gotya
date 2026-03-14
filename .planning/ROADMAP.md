@@ -35,7 +35,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Two mutually-importing YANG modules (`A imports B imports A`) produce a compile error, not infinite recursion
   4. A YANG file with unresolvable augments produces a compile error that lists the unresolved augment paths, not a silently incomplete schema
   5. Running the compiler against any input produces no output on stdout or stderr unless an error or warning is explicitly requested by the caller
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Write failing test stubs for all 8 Phase 1 behaviors (Wave 1)
+- [ ] 01-02-PLAN.md — Remove debug printfs, nil-guard findNode, fix AddChild error propagation (COMP-01, COMP-05, COMP-06)
+- [ ] 01-03-PLAN.md — Add circular import guard to DirectoryLoader (COMP-03)
+- [ ] 01-04-PLAN.md — Circular typedef visited set, augment loop cap, MaxErrors bound (COMP-02, COMP-04, COMP-07)
 
 ### Phase 2: Testing Infrastructure
 **Goal**: Every compiler and generator behavior is verifiable by a test that does not depend on string matching or manual inspection
@@ -86,7 +92,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compiler Correctness | 0/TBD | Not started | - |
+| 1. Compiler Correctness | 0/4 | In progress | - |
 | 2. Testing Infrastructure | 0/TBD | Not started | - |
 | 3. Go Generator | 0/TBD | Not started | - |
 | 4. Protobuf Generator | 0/TBD | Not started | - |
