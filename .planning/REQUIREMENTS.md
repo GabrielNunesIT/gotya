@@ -17,7 +17,7 @@
 
 ### Testing Infrastructure
 
-- [ ] **TEST-01**: Corpus smoke test runs all YANG files in `test/assets/yangs/` through the full parse→compile→generate pipeline and asserts no panic and syntactically valid Go output
+- [x] **TEST-01**: Corpus smoke test runs all YANG files in `test/assets/yangs/` through the full parse→compile→generate pipeline and asserts no panic and syntactically valid Go output
 - [x] **TEST-02**: Go generator validates output with `go/format.Source()` before writing — invalid generated Go surfaces at generation time, not at user compile time
 - [x] **TEST-03**: Compiler error conditions use typed error sentinels (not string-matched messages) so tests assert on structured values, not fragile substrings
 
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-05 | Phase 1 | Complete |
 | COMP-06 | Phase 1 | Complete |
 | COMP-07 | Phase 1 | Complete |
-| TEST-01 | Phase 2 | Pending |
+| TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
 | TEST-03 | Phase 2 | Complete |
 | GOGEN-01 | Phase 3 | Pending |
