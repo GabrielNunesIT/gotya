@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-15T16:20:53.090Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-03-15T16:24:18.598Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-protobuf-generator P05 | 1min | 2 tasks | 207 files |
 | Phase 05-public-api-stabilization P01 | 3min | 1 tasks | 1 files |
 | Phase 05-public-api-stabilization P02 | 10min | 2 tasks | 4 files |
+| Phase 05-public-api-stabilization P03 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ Recent decisions affecting current work:
 - [Phase 05-public-api-stabilization]: ParserDiagnostic exported (capital P) from parser package — external packages need to access Line/Column/Message fields; unexported struct fields are inaccessible across packages
 - [Phase 05-public-api-stabilization]: parseContent() internal helper shared by Parse() and ParseFile() — filename is empty string for Parse(), cleanPath for ParseFile()
 - [Phase 05-public-api-stabilization]: isValidYANGIdentifier() checks first byte per RFC 7950 §6.2 — minimal fix to reject @@ prefixes; addError() called in parseStatement() for invalid keyword identifiers
+- [Phase 05-public-api-stabilization]: ASTModule changed from type alias to defined struct — blocks ast.Module method access from external packages
+- [Phase 05-public-api-stabilization]: Removed loader.astCache manual population in main.go — loader.Load->LoadAST caches from disk; opaque ASTModule makes direct field access impossible
 
 ### Pending Todos
 
@@ -134,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T16:20:53.088Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-03-15T16:24:18.596Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
