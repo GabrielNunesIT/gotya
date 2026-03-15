@@ -430,7 +430,7 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 				inputStructName := rpcPrefix + "Input"
 				if !visited[inputStructName] {
 					visited[inputStructName] = true
-					if err := g.generateRPCStruct(inputStructName, inp.Children, w); err != nil {
+					if err := g.generateRPCStruct(inputStructName, inp.Children, w, visited); err != nil {
 						return err
 					}
 				}
@@ -442,7 +442,7 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 				outputStructName := rpcPrefix + "Output"
 				if !visited[outputStructName] {
 					visited[outputStructName] = true
-					if err := g.generateRPCStruct(outputStructName, out.Children, w); err != nil {
+					if err := g.generateRPCStruct(outputStructName, out.Children, w, visited); err != nil {
 						return err
 					}
 				}
@@ -453,7 +453,7 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 		notifStructName := prefix + toCamelCaseTitle(n.Name()) + "Notification"
 		if !visited[notifStructName] {
 			visited[notifStructName] = true
-			if err := g.generateRPCStruct(notifStructName, n.GetBase().Children, w); err != nil {
+			if err := g.generateRPCStruct(notifStructName, n.GetBase().Children, w, visited); err != nil {
 				return err
 			}
 		}
@@ -464,7 +464,7 @@ func (g *GoGenerator) generateNode(node schema.Node, w io.Writer, visited map[st
 
 // generateRPCStruct emits a top-level Go struct for an RPC input, output, or notification.
 // Children are sorted by name for deterministic output.
-func (g *GoGenerator) generateRPCStruct(structName string, children map[string]schema.Node, w io.Writer) error {
+func (g *GoGenerator) generateRPCStruct(structName string, children map[string]schema.Node, w io.Writer, visited map[string]bool) error {
 	if _, err := fmt.Fprintf(w, "// %s represents an RPC/action/notification data structure.\ntype %s struct {\n", structName, structName); err != nil {
 		return fmt.Errorf("write err: %w", err)
 	}
@@ -485,6 +485,16 @@ func (g *GoGenerator) generateRPCStruct(structName string, children map[string]s
 
 	if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
 		return fmt.Errorf("write err: %w", err)
+	}
+
+	// Emit type declarations (identity consts, enum types, etc.) for any leaf children
+	// that reference named types. generateField emits the field reference; generateNode
+	// emits the type definition. Without this pass, identityref/enum leaves inside
+	// RPC/action/notification structs produce undefined type references.
+	for _, name := range names {
+		if err := g.generateNode(children[name], w, visited, "", "", "", false); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1425,6 +1435,10 @@ func buildBoundsCondition(valExpr string, boundsList []string) string {
 // generateGetters generates safe nil-checking accessor methods for struct fields.
 func (g *GoGenerator) generateGetters(structName string, nodes []schema.Node, prefix, suffix string, w io.Writer) error {
 	for _, node := range nodes {
+		switch node.(type) {
+		case *schema.RPC, *schema.Action, *schema.Notification:
+			continue
+		}
 		fieldName := toCamelCaseTitle(node.Name())
 		if fieldName == "Validate" {
 			fieldName = "ValidateField"
@@ -1473,7 +1487,16 @@ func (g *GoGenerator) generateGetters(structName string, nodes []schema.Node, pr
 func (g *GoGenerator) resolveFieldTypeInfo(node schema.Node, prefix, suffix string) (goType string, isPtr, isContainer bool) {
 	switch n := node.(type) {
 	case *schema.Leaf:
-		if n.Type.Name == "union" && len(n.Type.Members) > 0 {
+		if n.Type.Name == "identityref" && len(n.Type.Bases) > 0 {
+			base := n.Type.Bases[0]
+			mod := g.currentModule
+			identPrefix := prefix
+			if mod != nil {
+				_, _, identPrefix = g.resolveIdentityModuleAndRoot(base, mod)
+			}
+			goType = "*" + g.resolveIdentityGoType(base, mod, identPrefix)
+			isPtr = true
+		} else if n.Type.Name == "union" && len(n.Type.Members) > 0 {
 			goType = "*" + unionGoTypeName(prefix, n.Name())
 			isPtr = true
 			isContainer = true // Treat union like a container passing the pointer around
@@ -1534,6 +1557,10 @@ func (g *GoGenerator) resolveFieldTypeInfo(node schema.Node, prefix, suffix stri
 // generateSetters generates setter methods for struct fields.
 func (g *GoGenerator) generateSetters(structName string, nodes []schema.Node, prefix, suffix string, w io.Writer) error {
 	for _, node := range nodes {
+		switch node.(type) {
+		case *schema.RPC, *schema.Action, *schema.Notification:
+			continue
+		}
 		fieldName := toCamelCaseTitle(node.Name())
 		if fieldName == "Validate" {
 			fieldName = "ValidateField"
@@ -1597,7 +1624,18 @@ func (g *GoGenerator) generatePopulateDefault(structName string, nodes []schema.
 				case "bool":
 					valStr = *n.Default
 				default:
-					valStr = fmt.Sprintf("%s(%s)", baseType, *n.Default)
+					switch n.Type.Name {
+					case "enumeration":
+						// Enum consts are named: typeName + toCamelCaseTitle(memberName)
+						valStr = baseType + toCamelCaseTitle(*n.Default)
+					case "bits":
+						continue // bits defaults are complex bitmasks; skip
+					case "identityref":
+						// Identity types have string underlying type; quote the value.
+						valStr = fmt.Sprintf("%s(%q)", baseType, *n.Default)
+					default:
+						valStr = fmt.Sprintf("%s(%s)", baseType, *n.Default)
+					}
 				}
 
 				fmt.Fprintf(&body, "\tif s.%s == nil {\n\t\tvar v %s = %s\n\t\ts.%s = &v\n\t}\n", fieldName, baseType, valStr, fieldName)
