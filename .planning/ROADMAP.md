@@ -118,7 +118,12 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `compiler/compiler_test.go` contains zero `assert.Contains(err.Error(), ...)` calls — all error assertions use `assert.ErrorIs(t, err, compiler.ErrXxx)` against the sentinel variables
   2. Calling `gotya.Compile()` with a slice of modules where multiple modules have errors returns a single aggregate error containing diagnostics from ALL failing modules, not just the first
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Refactor Validator to emit per-category sentinels via c.compiler.addError (Wave 1, TEST-03 prerequisite)
+- [ ] 06-02-PLAN.md — Fix Compile() accumulation loop + TestCompile_MultiModuleErrors (Wave 1, API-02)
+- [ ] 06-03-PLAN.md — Migrate all 21 assert.Contains error sites in compiler_test.go to assert.ErrorIs (Wave 2, TEST-03)
 
 ## Progress
 
@@ -132,4 +137,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 5/5 | Complete   | 2026-03-15 |
 | 5. Public API Stabilization | 3/3 | Complete   | 2026-03-15 |
-| 6. v1.0 Gap Closure | 0/TBD | Not started | - |
+| 6. v1.0 Gap Closure | 0/3 | Not started | - |
