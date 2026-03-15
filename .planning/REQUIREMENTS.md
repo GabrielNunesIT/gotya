@@ -30,7 +30,7 @@
 
 ### Protobuf Generator
 
-- [ ] **PBGEN-01**: RFC 7950 statement coverage matrix exists — every YANG statement type is explicitly marked as supported, unsupported, or out-of-scope in a `docs/proto-coverage.md` document
+- [x] **PBGEN-01**: RFC 7950 statement coverage matrix exists — every YANG statement type is explicitly marked as supported, unsupported, or out-of-scope in a `docs/proto-coverage.md` document
 - [x] **PBGEN-02**: `anydata` and `anyxml` nodes emit a valid Protobuf field (`google.protobuf.Any` or `bytes`) — no silent node drops
 - [x] **PBGEN-03**: `rpc` and `action` statements emit Protobuf `service` block definitions with `rpc` methods referencing typed request/response messages
 - [x] **PBGEN-04**: Generated CEL annotation paths are validated against the compiled schema after generation — invalid paths produce a generation error, not silent incorrect annotations
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GOGEN-02 | Phase 3 | Complete |
 | GOGEN-03 | Phase 3 | Complete |
 | GOGEN-04 | Phase 3 | Complete |
-| PBGEN-01 | Phase 4 | Pending |
+| PBGEN-01 | Phase 4 | Complete |
 | PBGEN-02 | Phase 4 | Complete |
 | PBGEN-03 | Phase 4 | Complete |
 | PBGEN-04 | Phase 4 | Complete |
