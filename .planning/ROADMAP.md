@@ -137,4 +137,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 5/5 | Complete   | 2026-03-15 |
 | 5. Public API Stabilization | 3/3 | Complete   | 2026-03-15 |
-| 6. v1.0 Gap Closure | 0/3 | Not started | - |
+| 6. v1.0 Gap Closure | 2/3 | In Progress|  |

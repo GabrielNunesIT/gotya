@@ -19,7 +19,7 @@
 
 - [x] **TEST-01**: Corpus smoke test runs all YANG files in `test/assets/yangs/` through the full parse→compile→generate pipeline and asserts no panic and syntactically valid Go output
 - [x] **TEST-02**: Go generator validates output with `go/format.Source()` before writing — invalid generated Go surfaces at generation time, not at user compile time
-- [x] **TEST-03**: Compiler error conditions use typed error sentinels (not string-matched messages) so tests assert on structured values, not fragile substrings
+- [ ] **TEST-03**: Compiler error conditions use typed error sentinels (not string-matched messages) so tests assert on structured values, not fragile substrings
 
 ### Go Generator
 
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-07 | Phase 1 | Complete |
 | TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
-| TEST-03 | Phase 2 | Complete |
+| TEST-03 | Phase 6 | Pending |
 | GOGEN-01 | Phase 3 | Complete |
 | GOGEN-02 | Phase 3 | Complete |
 | GOGEN-03 | Phase 3 | Complete |
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PBGEN-03 | Phase 4 | Complete |
 | PBGEN-04 | Phase 4 | Complete |
 | API-01 | Phase 5 | Complete |
-| API-02 | Phase 5 | Complete |
+| API-02 | Phase 6 | Complete |
 | API-03 | Phase 5 | Complete |
 | API-04 | Phase 5 | Complete |
 
