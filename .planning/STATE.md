@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 05 context gathered
-last_updated: "2026-03-15T13:15:46.315Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-15T16:15:01.477Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
   percent: 0
 ---
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-protobuf-generator P03 | 4min | 2 tasks | 2 files |
 | Phase 04-protobuf-generator P04 | 2min | 1 tasks | 3 files |
 | Phase 04-protobuf-generator P05 | 1min | 2 tasks | 207 files |
+| Phase 05-public-api-stabilization P01 | 3min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,8 @@ Recent decisions affecting current work:
 - [Phase 04-protobuf-generator]: annotatedFields and currentModuleName stored as ProtoGenerator fields, reset each GenerateDevice call — avoids threading extra params through generateField signatures
 - [Phase 04-protobuf-generator]: 26 rows in RFC 7950 coverage matrix (not 25): feature/if-feature as one row, deviation as separate — all rows from interfaces block included
 - [Phase 04-protobuf-generator]: identity is the only unsupported statement: identityref emits string field, no typed enum for identity hierarchy in v1
+- [Phase 05-public-api-stabilization]: gotya_test.go uses package gotya_test (external) — callers cannot import ast/schema/compiler directly
+- [Phase 05-public-api-stabilization]: Schema() accessor pattern chosen for TestCompile_OpaqueReturn — method call verifiable at compile time without schema import
 
 ### Pending Todos
 
@@ -127,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T13:15:46.308Z
-Stopped at: Phase 05 context gathered
-Resume file: .planning/phases/05-public-api-stabilization/05-CONTEXT.md
+Last session: 2026-03-15T16:15:01.476Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None

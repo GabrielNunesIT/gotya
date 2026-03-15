@@ -37,10 +37,10 @@
 
 ### Public API
 
-- [ ] **API-01**: `gotya.Parse()` returns a domain-specific error type (`*gotya.ParseError` or equivalent) — not `os.ErrInvalid`; error includes file, line, column, and message fields
-- [ ] **API-02**: Parser diagnostics (all parse errors, not just the first) are propagated through `gotya.Parse()` — callers can access the full error list
-- [ ] **API-03**: All exported symbols in `gotya.go` are intentional public API — no internal package types leak through function signatures; documented as stable
-- [ ] **API-04**: All placeholder, demonstration, and TODO comments removed from `gotya.go` — public API file documents actual behavior only
+- [x] **API-01**: `gotya.Parse()` returns a domain-specific error type (`*gotya.ParseError` or equivalent) — not `os.ErrInvalid`; error includes file, line, column, and message fields
+- [x] **API-02**: Parser diagnostics (all parse errors, not just the first) are propagated through `gotya.Parse()` — callers can access the full error list
+- [x] **API-03**: All exported symbols in `gotya.go` are intentional public API — no internal package types leak through function signatures; documented as stable
+- [x] **API-04**: All placeholder, demonstration, and TODO comments removed from `gotya.go` — public API file documents actual behavior only
 
 ## v2 Requirements
 
@@ -94,10 +94,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PBGEN-02 | Phase 4 | Complete |
 | PBGEN-03 | Phase 4 | Complete |
 | PBGEN-04 | Phase 4 | Complete |
-| API-01 | Phase 5 | Pending |
-| API-02 | Phase 5 | Pending |
-| API-03 | Phase 5 | Pending |
-| API-04 | Phase 5 | Pending |
+| API-01 | Phase 5 | Complete |
+| API-02 | Phase 5 | Complete |
+| API-03 | Phase 5 | Complete |
+| API-04 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 22 total
