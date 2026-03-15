@@ -2,6 +2,7 @@
 package gotya
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -128,14 +129,19 @@ func Compile(astModules []*ASTModule, opts *CompileOptions) ([]*Module, error) {
 	comp := compiler.New(compOpts)
 
 	var compiled []*Module
+	var errs []error
 	for _, m := range astModules {
 		schemaMod, err := comp.Compile(m.mod)
 		if err != nil {
-			return nil, fmt.Errorf("compile module %s: %w", m.mod.Argument(), err)
+			errs = append(errs, fmt.Errorf("compile module %s: %w", m.mod.Argument(), err))
+			continue
 		}
 		if schemaMod != nil {
 			compiled = append(compiled, &Module{schema: schemaMod})
 		}
+	}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 	return compiled, nil
 }
