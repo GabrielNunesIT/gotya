@@ -11,12 +11,20 @@ import (
 	"github.com/gotya/gotya/token"
 )
 
+// ParserDiagnostic holds structured position and message data for a single parse error.
+type ParserDiagnostic struct {
+	Line    int
+	Column  int
+	Message string
+}
+
 // Parser holds the state for the recursive descent parser.
 type Parser struct {
-	lex       *lexer.Lexer
-	curToken  token.Token
-	peekToken token.Token
-	errors    []string
+	lex         *lexer.Lexer
+	curToken    token.Token
+	peekToken   token.Token
+	errors      []string
+	diagnostics []ParserDiagnostic
 }
 
 // New creates a new Parser instance from an initialized lexer.
@@ -147,6 +155,16 @@ func (p *Parser) parseBlock() []ast.Statement {
 
 func (p *Parser) addError(msg string) {
 	p.errors = append(p.errors, msg)
+	p.diagnostics = append(p.diagnostics, ParserDiagnostic{
+		Line:    p.curToken.Pos.Line,
+		Column:  p.curToken.Pos.Column,
+		Message: msg,
+	})
+}
+
+// Diagnostics returns structured parse diagnostics with position information.
+func (p *Parser) Diagnostics() []ParserDiagnostic {
+	return p.diagnostics
 }
 
 func (p *Parser) recoverStatement() {
