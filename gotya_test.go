@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/gotya/gotya"
+	"github.com/gotya/gotya/compiler"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,6 +87,41 @@ func TestASTModule_Name(t *testing.T) {
 
 	name := mod.Name()
 	require.NotEmpty(t, name)
+}
+
+// TestCompile_MultiModuleErrors asserts that Compile accumulates errors from all
+// modules before returning, so callers see the full failure picture.
+func TestCompile_MultiModuleErrors(t *testing.T) {
+	// Module A: list with no key leaf — triggers ErrListMissingKey in the compiler.
+	srcA := `
+module mod-a {
+  namespace "urn:a"; prefix "a";
+  list bad-list { leaf x { type string; } }
+}
+`
+	// Module B: string leaf with a range restriction — triggers ErrTypeRestriction.
+	srcB := `
+module mod-b {
+  namespace "urn:b"; prefix "b";
+  leaf bad-leaf { type string { range "1..10"; } }
+}
+`
+	modA, err := gotya.Parse(srcA)
+	require.NoError(t, err, "module A must parse without error")
+
+	modB, err := gotya.Parse(srcB)
+	require.NoError(t, err, "module B must parse without error")
+
+	_, compileErr := gotya.Compile([]*gotya.ASTModule{modA, modB}, nil)
+	require.Error(t, compileErr, "expected a compile error from two invalid modules")
+
+	// Both module names must appear in the combined error message.
+	require.Contains(t, compileErr.Error(), "mod-a", "error must mention the first failing module")
+	require.Contains(t, compileErr.Error(), "mod-b", "error must mention the second failing module")
+
+	// Both sentinels must be reachable via errors.Is on the joined error.
+	assert.True(t, errors.Is(compileErr, compiler.ErrListMissingKey), "expected ErrListMissingKey in joined error")
+	assert.True(t, errors.Is(compileErr, compiler.ErrTypeRestriction), "expected ErrTypeRestriction in joined error")
 }
 
 // TestParseFile_FilledDiagnostic asserts two things:
