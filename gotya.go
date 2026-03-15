@@ -13,9 +13,44 @@ import (
 	"github.com/gotya/gotya/schema"
 )
 
-// ASTModule is an alias for the parsed abstract syntax tree of a YANG module.
-// We export this so consumers of the parser API know what type they are working with.
-type ASTModule = ast.Module
+// ASTModule is the parsed abstract syntax tree of a YANG module.
+// Use Parse or ParseFile to obtain an ASTModule.
+type ASTModule struct {
+	mod *ast.Module
+}
+
+// Name returns the YANG module name (the argument of the module statement).
+func (m *ASTModule) Name() string {
+	return m.mod.Argument()
+}
+
+// Keyword returns "module" or "submodule".
+func (m *ASTModule) Keyword() string {
+	return m.mod.Keyword()
+}
+
+// Argument returns the module name argument — identical to Name(), provided for
+// compatibility with YANG AST conventions.
+func (m *ASTModule) Argument() string {
+	return m.mod.Argument()
+}
+
+// Module is a compiled YANG module. Use Compile to obtain a Module.
+type Module struct {
+	schema *schema.Module
+}
+
+// Schema returns the compiled schema.Module for use with generator packages.
+func (m *Module) Schema() *schema.Module {
+	return m.schema
+}
+
+// CompileOptions configures the behavior of Compile.
+type CompileOptions struct {
+	// MaxErrors is the maximum number of errors to accumulate before stopping.
+	// Zero means use the default of 100.
+	MaxErrors int
+}
 
 // Diagnostic holds structured information about a single parse error.
 type Diagnostic struct {
@@ -60,7 +95,7 @@ func parseContent(content, filename string) (*ASTModule, error) {
 		}
 		return nil, pe
 	}
-	return astMod, nil
+	return &ASTModule{mod: astMod}, nil
 }
 
 // Parse parses a YANG module from src and returns the AST representation.
@@ -82,26 +117,24 @@ func ParseFile(path string) (*ASTModule, error) {
 	return parseContent(string(content), cleanPath)
 }
 
-// Compile takes one or more AST modules and compiles them into a fully resolved
-// semantic schema consisting of interlinked nodes.
-//
-// Why: After parsing a single module, all 'include', 'import', and 'uses' statements are
-// simply textual references. A compiler pass is required to validate types, resolve groups,
-// build the true node hierarchy, and apply augments across multiple interconnected YANG files.
-func Compile(astModules []*ASTModule, opts *compiler.Options) ([]*schema.Module, error) {
-	if opts == nil {
-		opts = &compiler.Options{}
+// Compile compiles one or more parsed YANG modules into a resolved schema.
+// Pass nil opts to use defaults. The returned Module values provide access to
+// the compiled schema via Schema().
+func Compile(astModules []*ASTModule, opts *CompileOptions) ([]*Module, error) {
+	compOpts := &compiler.Options{}
+	if opts != nil {
+		compOpts.MaxErrors = opts.MaxErrors
 	}
-	comp := compiler.New(opts)
+	comp := compiler.New(compOpts)
 
-	var compiled []*schema.Module
-	for _, astMod := range astModules {
-		mod, err := comp.Compile(astMod)
+	var compiled []*Module
+	for _, m := range astModules {
+		schemaMod, err := comp.Compile(m.mod)
 		if err != nil {
-			return nil, fmt.Errorf("compile module %s: %w", astMod.Argument(), err)
+			return nil, fmt.Errorf("compile module %s: %w", m.mod.Argument(), err)
 		}
-		if mod != nil {
-			compiled = append(compiled, mod)
+		if schemaMod != nil {
+			compiled = append(compiled, &Module{schema: schemaMod})
 		}
 	}
 	return compiled, nil
