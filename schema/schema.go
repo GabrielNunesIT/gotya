@@ -86,6 +86,12 @@ type Module struct {
 	Imports    map[string]string        // Original imports mapping
 }
 
+// Schema returns the module itself. This satisfies the gotya public API contract
+// allowing callers to access the schema without importing the schema package directly.
+func (m *Module) Schema() *Module {
+	return m
+}
+
 // AddNode adds a top-level node to the module.
 func (m *Module) AddNode(node Node) error {
 	if m.Nodes == nil {

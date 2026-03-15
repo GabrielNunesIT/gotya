@@ -17,34 +17,69 @@ import (
 // We export this so consumers of the parser API know what type they are working with.
 type ASTModule = ast.Module
 
-// Parse takes a raw YANG string and returns an interpreted AST module.
-//
-// Why: Providing a simple string-based parser allows for easy integration when
-// YANG models are dynamically generated or loaded from a database, bypassing the filesystem.
-func Parse(content string) (*ASTModule, error) {
+// Diagnostic holds structured information about a single parse error.
+type Diagnostic struct {
+	File    string
+	Line    int
+	Column  int
+	Message string
+}
+
+// ParseError is returned by Parse and ParseFile when one or more parse errors occur.
+// Use errors.As to access the full Errors slice.
+type ParseError struct {
+	Errors []Diagnostic
+}
+
+// Error implements the error interface. It returns a human-readable summary.
+func (e *ParseError) Error() string {
+	if len(e.Errors) == 0 {
+		return "parse error"
+	}
+	if len(e.Errors) == 1 {
+		return fmt.Sprintf("parse error: %s", e.Errors[0].Message)
+	}
+	return fmt.Sprintf("%d parse errors: %s", len(e.Errors), e.Errors[0].Message)
+}
+
+// parseContent is the shared implementation used by Parse and ParseFile.
+// filename is set to the file path when called from ParseFile, or "" when called from Parse.
+func parseContent(content, filename string) (*ASTModule, error) {
 	l := lexer.New(content)
 	p := parser.New(l)
 	astMod := p.ParseModule()
-	// NOTE: We could gather parser errors here and return them.
-	// For now, if the module is nil, it failed completely.
-	if astMod == nil {
-		return nil, os.ErrInvalid // Simplistic error for facade demonstration
+	if diags := p.Diagnostics(); len(diags) > 0 {
+		pe := &ParseError{}
+		for _, d := range diags {
+			pe.Errors = append(pe.Errors, Diagnostic{
+				File:    filename,
+				Line:    d.Line,
+				Column:  d.Column,
+				Message: d.Message,
+			})
+		}
+		return nil, pe
 	}
 	return astMod, nil
 }
 
-// ParseFile takes a filesystem path to a .yang file, reads it,
-// and returns an interpreted AST module.
-//
-// Why: Standard use cases revolve around working with local files. This provides
-// a convenient wrapper so users do not have to handle the file I/O boilerplate themselves.
-func ParseFile(path string) (*ast.Module, error) {
+// Parse parses a YANG module from src and returns the AST representation.
+// If the source contains syntax errors, Parse returns a *ParseError containing
+// all diagnostics. Use errors.As to access file, line, column, and message fields.
+func Parse(src string) (*ASTModule, error) {
+	return parseContent(src, "")
+}
+
+// ParseFile reads the YANG file at path and returns the AST representation.
+// If the file contains syntax errors, ParseFile returns a *ParseError where
+// each Diagnostic.File is set to the cleaned path.
+func ParseFile(path string) (*ASTModule, error) {
 	cleanPath := filepath.Clean(path)
 	content, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("read file %s: %w", cleanPath, err)
 	}
-	return Parse(string(content))
+	return parseContent(string(content), cleanPath)
 }
 
 // Compile takes one or more AST modules and compiles them into a fully resolved

@@ -5,6 +5,7 @@ package parser
 
 import (
 	"fmt"
+	"unicode"
 
 	"github.com/gotya/gotya/ast"
 	"github.com/gotya/gotya/parser/lexer"
@@ -72,10 +73,26 @@ func (p *Parser) ParseModule() *ast.Module {
 	return module
 }
 
+// isValidYANGIdentifier reports whether s is a valid YANG identifier start per RFC 7950 §6.2.
+// An identifier must begin with a letter (A-Z, a-z) or underscore.
+func isValidYANGIdentifier(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	r := rune(s[0])
+	return unicode.IsLetter(r) || r == '_'
+}
+
 // parseStatement parses a generic YANG statement.
 func (p *Parser) parseStatement() ast.Statement {
 	if p.curToken.Type != token.IDENTIFIER {
 		p.addError(fmt.Sprintf("expected keyword at line %d, got %s", p.curToken.Pos.Line, p.curToken.Type))
+		return nil
+	}
+
+	// Validate that the keyword is a legal YANG identifier (RFC 7950 §6.2).
+	if !isValidYANGIdentifier(p.curToken.Literal) {
+		p.addError(fmt.Sprintf("invalid YANG identifier %q at line %d", p.curToken.Literal, p.curToken.Pos.Line))
 		return nil
 	}
 

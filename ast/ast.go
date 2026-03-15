@@ -60,3 +60,11 @@ type Module struct {
 func (m *Module) String() string {
 	return "module " + m.Arg
 }
+
+// Name returns the name (argument) of the module statement.
+func (m *Module) Name() string {
+	if m.BaseNode == nil {
+		return ""
+	}
+	return m.Arg
+}
