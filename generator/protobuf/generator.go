@@ -74,6 +74,12 @@ func (g *ProtoGenerator) Generate(mod *schema.Module, w io.Writer) error {
 		}
 	}
 
+	if containsAnyNode([]*schema.Module{mod}) {
+		if _, err := fmt.Fprintf(w, "import \"google/protobuf/any.proto\";\n"); err != nil {
+			return fmt.Errorf("failed to write import: %w", err)
+		}
+	}
+
 	visited := make(map[string]bool)
 	for _, node := range mod.Nodes {
 		if err := g.generateNode(node, w, visited); err != nil {
@@ -108,6 +114,12 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 	} else if g.Options.GenerateCELValidation {
 		if _, err := fmt.Fprintf(w, "\n"); err != nil {
 			return fmt.Errorf("failed to write newline: %w", err)
+		}
+	}
+
+	if containsAnyNode(modules) {
+		if _, err := fmt.Fprintf(w, "import \"google/protobuf/any.proto\";\n"); err != nil {
+			return fmt.Errorf("failed to write import: %w", err)
 		}
 	}
 
@@ -188,6 +200,45 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 		}
 	}
 
+	// Emit service blocks — one per module that contains at least one RPC or Action.
+	// Actions may be nested inside containers/lists, so we collect them recursively.
+	for _, mod := range modules {
+		var rpcMethods []string
+		var collectRPCActions func(nodes map[string]schema.Node)
+		collectRPCActions = func(nodes map[string]schema.Node) {
+			for _, name := range getSortedChildNames(nodes) {
+				node := nodes[name]
+				switch n := node.(type) {
+				case *schema.RPC:
+					rpcPrefix := toCamelCaseTitle(n.Name())
+					rpcMethods = append(rpcMethods, fmt.Sprintf("\trpc %s(%sInput) returns (%sOutput);\n",
+						rpcPrefix, rpcPrefix, rpcPrefix))
+				case *schema.Action:
+					rpcPrefix := toCamelCaseTitle(n.Name())
+					rpcMethods = append(rpcMethods, fmt.Sprintf("\trpc %s(%sInput) returns (%sOutput);\n",
+						rpcPrefix, rpcPrefix, rpcPrefix))
+				case *schema.Container, *schema.List:
+					collectRPCActions(node.GetBase().Children)
+				}
+			}
+		}
+		collectRPCActions(mod.Nodes)
+		if len(rpcMethods) > 0 {
+			svcName := toCamelCaseTitle(mod.Name) + "Service"
+			if _, err := fmt.Fprintf(w, "service %s {\n", svcName); err != nil {
+				return fmt.Errorf("write err: %w", err)
+			}
+			for _, m := range rpcMethods {
+				if _, err := fmt.Fprint(w, m); err != nil {
+					return fmt.Errorf("write err: %w", err)
+				}
+			}
+			if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
+				return fmt.Errorf("write err: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -197,6 +248,28 @@ func (g *ProtoGenerator) generateNode(node schema.Node, w io.Writer, visited map
 		return g.generateMessage(n.Name(), n.Description, n.Children, w, visited)
 	case *schema.List:
 		return g.generateMessage(n.Name(), n.Description, n.Children, w, visited)
+	case *schema.RPC, *schema.Action:
+		base := node.GetBase()
+		rpcPrefix := toCamelCaseTitle(base.NodeName)
+		if inputNode, ok := base.Children["input"]; ok {
+			if inp, ok2 := inputNode.(*schema.Input); ok2 {
+				if err := g.generateMessage(rpcPrefix+"Input", nil, inp.Children, w, visited); err != nil {
+					return err
+				}
+			}
+		}
+		if outputNode, ok := base.Children["output"]; ok {
+			if out, ok2 := outputNode.(*schema.Output); ok2 {
+				if err := g.generateMessage(rpcPrefix+"Output", nil, out.Children, w, visited); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	case *schema.Notification:
+		notifMsgName := toCamelCaseTitle(n.Name()) + "Notification"
+		desc := n.GetBase().Description
+		return g.generateMessage(notifMsgName, desc, n.GetBase().Children, w, visited)
 	}
 	return nil
 }
@@ -446,6 +519,14 @@ func (g *ProtoGenerator) generateField(node schema.Node, w io.Writer, fieldIndex
 		if _, err := fmt.Fprintf(w, "\t}\n"); err != nil {
 			return fmt.Errorf("write err: %w", err)
 		}
+	case *schema.AnyData, *schema.AnyXML:
+		if _, err := fmt.Fprintf(w, "\tgoogle.protobuf.Any %s = %d;\n", fieldName, *fieldIndex); err != nil {
+			return fmt.Errorf("write err: %w", err)
+		}
+		*fieldIndex++
+	case *schema.RPC, *schema.Action, *schema.Notification:
+		// These are not proto message fields — skipped here, handled as service blocks / messages in GenerateDevice
+		return nil
 	}
 
 	return nil
@@ -517,4 +598,28 @@ func getSortedChildNames(children map[string]schema.Node) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// containsAnyNode reports whether any module in modules contains an anydata or anyxml node (recursive).
+func containsAnyNode(modules []*schema.Module) bool {
+	for _, mod := range modules {
+		if moduleHasAny(mod.Nodes) {
+			return true
+		}
+	}
+	return false
+}
+
+// moduleHasAny recursively checks whether nodes contains any *schema.AnyData or *schema.AnyXML node.
+func moduleHasAny(nodes map[string]schema.Node) bool {
+	for _, node := range nodes {
+		switch node.(type) {
+		case *schema.AnyData, *schema.AnyXML:
+			return true
+		}
+		if moduleHasAny(node.GetChildren()) {
+			return true
+		}
+	}
+	return false
 }

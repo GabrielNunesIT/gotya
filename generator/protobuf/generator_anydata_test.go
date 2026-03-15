@@ -15,8 +15,6 @@ import (
 
 // TestAnyDataField verifies that a *schema.AnyData node emits a google.protobuf.Any field.
 func TestAnyDataField(t *testing.T) {
-	t.Fatal("not yet implemented")
-
 	t.Parallel()
 	yangSource := `
 module test-anydata {
@@ -47,8 +45,6 @@ module test-anydata {
 
 // TestAnyXMLField verifies that a *schema.AnyXML node emits a google.protobuf.Any field.
 func TestAnyXMLField(t *testing.T) {
-	t.Fatal("not yet implemented")
-
 	t.Parallel()
 	yangSource := `
 module test-anyxml {
@@ -80,8 +76,6 @@ module test-anyxml {
 // TestAnyDataConditionalImport verifies that the google/protobuf/any.proto import is added
 // only when the module contains anydata or anyxml nodes.
 func TestAnyDataConditionalImport(t *testing.T) {
-	t.Fatal("not yet implemented")
-
 	t.Parallel()
 
 	anydataSource := `
