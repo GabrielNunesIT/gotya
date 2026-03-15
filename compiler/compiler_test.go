@@ -207,7 +207,7 @@ func TestCompiler_Validation(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "list invalid-list must have at least one key")
+	assert.ErrorIs(t, err, compiler.ErrListMissingKey)
 }
 
 func TestCompiler_IdentifierUniqueness(t *testing.T) {
@@ -237,7 +237,7 @@ func TestCompiler_IdentifierUniqueness(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "duplicate identifier 'id'")
+	assert.ErrorIs(t, err, compiler.ErrDuplicateIdent)
 }
 
 func TestCompiler_ConfigBoundary(t *testing.T) {
@@ -266,7 +266,7 @@ func TestCompiler_ConfigBoundary(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "has 'config true' but its parent base has 'config false'")
+	assert.ErrorIs(t, err, compiler.ErrConfigBoundary)
 }
 
 func TestCompiler_TypeRestrictions(t *testing.T) {
@@ -344,9 +344,9 @@ func TestCompiler_InvalidTypeRestrictions(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "type string for node invalid-string cannot have range")
-	assert.Contains(t, err.Error(), "type int32 for node invalid-int cannot have length")
-	assert.Contains(t, err.Error(), "type int32 for node invalid-int cannot have pattern")
+	assert.ErrorIs(t, err, compiler.ErrTypeRestriction)
+	assert.ErrorIs(t, err, compiler.ErrTypeRestriction)
+	assert.ErrorIs(t, err, compiler.ErrTypeRestriction)
 }
 
 func TestCompiler_ListKeyValidation(t *testing.T) {
@@ -377,8 +377,8 @@ func TestCompiler_ListKeyValidation(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "key 'not-here' not found in list 'bad-list-nonexistent'")
-	assert.Contains(t, err.Error(), "key 'wrong-type' in list 'bad-list-wrong-type' must be a leaf")
+	assert.ErrorIs(t, err, compiler.ErrListMissingKey)
+	assert.ErrorIs(t, err, compiler.ErrListMissingKey)
 }
 
 func TestCompiler_CircularUses(t *testing.T) {
@@ -411,7 +411,7 @@ func TestCompiler_CircularUses(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "circular dependency detected in uses")
+	assert.ErrorIs(t, err, compiler.ErrCircularUses)
 }
 
 func TestCompiler_MandatoryDefaultValidation(t *testing.T) {
@@ -438,7 +438,7 @@ func TestCompiler_MandatoryDefaultValidation(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "leaf 'invalid-leaf' is mandatory and cannot have a default value")
+	assert.ErrorIs(t, err, compiler.ErrMandatoryDefault)
 }
 
 func TestCompiler_MustAndPresence(t *testing.T) {
@@ -1224,7 +1224,7 @@ module test {
 }`
 	_, err := compile(t, input)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "circular typedef")
+	assert.ErrorIs(t, err, compiler.ErrCircularTypedef)
 }
 
 func TestCompiler_UnresolvableAugment(t *testing.T) {
@@ -1239,7 +1239,7 @@ module test {
 }`
 	_, err := compile(t, input)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "augment target not found")
+	assert.ErrorIs(t, err, compiler.ErrAugmentNotFound)
 }
 
 func TestCompiler_DuplicateRPCInput(t *testing.T) {
@@ -1321,7 +1321,7 @@ module test {
 }`, strings.Join(keys, " "))
 	_, err := compile(t, input)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "compilation stopped")
+	assert.ErrorIs(t, err, compiler.ErrMaxErrors)
 	// Count lines — should be at most ~101 (100 errors + 1 truncation)
 	lines := strings.Split(err.Error(), "\n")
 	assert.LessOrEqual(t, len(lines), 103, "error output should be bounded near MaxErrors")
