@@ -102,7 +102,12 @@ Plans:
   1. Calling `gotya.Parse()` on a YANG file with syntax errors returns a value that can be type-asserted to `*gotya.ParseError` (or unwrapped to one), providing file name, line number, column number, and message — not `os.ErrInvalid`
   2. Calling `gotya.Parse()` on a YANG file with multiple errors returns all parse diagnostics, not just the first — a caller can present the full error list to the user without re-parsing
   3. Every exported symbol in `gotya.go` is either a deliberate public API or unexported — no internal package types appear in any exported function signature, and the file contains no `// TODO`, `// placeholder`, or `// for demonstration` comments
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — TDD RED: gotya_test.go stubs for all API-01/02/03 behaviors (Wave 1)
+- [ ] 05-02-PLAN.md — API-01/02: parser diagnostics + ParseError/Diagnostic types + rewrite Parse()/ParseFile() (Wave 2)
+- [ ] 05-03-PLAN.md — API-03/04: opaque ASTModule/Module wrappers + CompileOptions + cmd/gotya update + godoc cleanup (Wave 3)
 
 ## Progress
 
@@ -115,4 +120,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Testing Infrastructure | 3/3 | Complete    | 2026-03-14 |
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 5/5 | Complete   | 2026-03-15 |
-| 5. Public API Stabilization | 0/TBD | Not started | - |
+| 5. Public API Stabilization | 0/3 | Not started | - |
