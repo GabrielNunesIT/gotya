@@ -16,7 +16,6 @@ import (
 // TestRPCServiceBlock verifies that a *schema.RPC node emits a service block with rpc method,
 // and both Input and Output message definitions.
 func TestRPCServiceBlock(t *testing.T) {
-	t.Fatal("not yet implemented")
 
 	t.Parallel()
 	yangSource := `
@@ -65,7 +64,6 @@ module test-rpc {
 // TestActionServiceBlock verifies that a *schema.Action node emits a service block with
 // rpc method, and both Input and Output message definitions.
 func TestActionServiceBlock(t *testing.T) {
-	t.Fatal("not yet implemented")
 
 	t.Parallel()
 	yangSource := `
@@ -116,7 +114,6 @@ module test-action {
 // TestNotificationMessage verifies that a *schema.Notification node emits a standalone message
 // and does NOT emit a service block rpc entry for the notification.
 func TestNotificationMessage(t *testing.T) {
-	t.Fatal("not yet implemented")
 
 	t.Parallel()
 	yangSource := `
