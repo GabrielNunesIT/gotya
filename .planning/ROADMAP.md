@@ -85,7 +85,14 @@ Plans:
   2. A YANG module containing `anydata` or `anyxml` nodes generates a valid Protobuf field (`google.protobuf.Any` or `bytes`) for each — no nodes are silently dropped from the generated `.proto` file
   3. A YANG module containing `rpc` or `action` statements generates a Protobuf `service` block with typed `rpc` methods referencing the correct request and response message types
   4. After generating a `.proto` file, all CEL annotation paths in the output are validated against the compiled schema — a path that does not correspond to a real schema node produces a generation error before the file is written
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — TDD RED stubs for PBGEN-02/03/04 + proto golden test harness (Wave 1)
+- [ ] 04-02-PLAN.md — PBGEN-02: anydata/anyxml emit google.protobuf.Any with conditional import (Wave 2)
+- [ ] 04-03-PLAN.md — PBGEN-03: rpc/action service blocks + Input/Output messages + notification message (Wave 2)
+- [ ] 04-04-PLAN.md — PBGEN-04: CEL annotation path validation post-generation (Wave 2)
+- [ ] 04-05-PLAN.md — PBGEN-01: docs/proto-coverage.md + golden file generation and TestGoldenProto GREEN (Wave 3)
 
 ### Phase 5: Public API Stabilization
 **Goal**: The public API in `gotya.go` is intentional, documented, and stable — callers can depend on it without anticipating a breaking change before v1 is tagged
@@ -107,5 +114,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Compiler Correctness | 4/4 | Complete    | 2026-03-14 |
 | 2. Testing Infrastructure | 3/3 | Complete    | 2026-03-14 |
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
-| 4. Protobuf Generator | 0/TBD | Not started | - |
+| 4. Protobuf Generator | 0/5 | Not started | - |
 | 5. Public API Stabilization | 0/TBD | Not started | - |
