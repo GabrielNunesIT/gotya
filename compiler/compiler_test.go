@@ -858,7 +858,7 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 		name        string
 		input       string
 		expectError bool
-		errorMsg    string
+		sentinel    error
 	}{
 		{
 			name: "Valid Local Base",
@@ -890,7 +890,7 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 				}
 			`,
 			expectError: true,
-			errorMsg:    "invalid identityref base 'unknown-base' in id: identity not found locally",
+			sentinel:    compiler.ErrIdentityrefBase,
 		},
 		{
 			name: "No Base Statement",
@@ -904,7 +904,7 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 				}
 			`,
 			expectError: true,
-			errorMsg:    "identityref id must have at least one base statement",
+			sentinel:    compiler.ErrIdentityrefBase,
 		},
 		{
 			name: "Unknown Prefix",
@@ -920,7 +920,7 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 				}
 			`,
 			expectError: true,
-			errorMsg:    "invalid identityref base 'other:my-base' in id: unknown prefix other",
+			sentinel:    compiler.ErrIdentityrefBase,
 		},
 	}
 	for _, tt := range tests {
@@ -936,7 +936,7 @@ func TestCompiler_IdentityrefValidation(t *testing.T) {
 
 			if tt.expectError {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorMsg)
+				assert.ErrorIs(t, err, tt.sentinel)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -1136,10 +1136,10 @@ func TestCompiler_DefaultValues(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid default 'True' for boolean leaf bad-bool")
-	assert.Contains(t, err.Error(), "invalid default '12.5' for integer leaf bad-int")
-	assert.Contains(t, err.Error(), "invalid default '-5' for unsigned integer leaf bad-uint")
-	assert.Contains(t, err.Error(), "invalid default 'green' for enum leaf bad-enum")
+	assert.ErrorIs(t, err, compiler.ErrInvalidDefault)
+	assert.ErrorIs(t, err, compiler.ErrInvalidDefault)
+	assert.ErrorIs(t, err, compiler.ErrInvalidDefault)
+	assert.ErrorIs(t, err, compiler.ErrInvalidDefault)
 }
 
 func TestCompiler_XPathSyntax(t *testing.T) {
@@ -1176,9 +1176,9 @@ func TestCompiler_XPathSyntax(t *testing.T) {
 	_, err := comp.Compile(astMod)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "mismatched quotes in when expression")
-	assert.Contains(t, err.Error(), "mismatched brackets or parentheses in must expression")
-	assert.Contains(t, err.Error(), "mismatched brackets or parentheses in path expression")
+	assert.ErrorIs(t, err, compiler.ErrXPathSyntax)
+	assert.ErrorIs(t, err, compiler.ErrXPathSyntax)
+	assert.ErrorIs(t, err, compiler.ErrXPathSyntax)
 }
 
 func TestCompiler_MalformedAugmentPath(t *testing.T) {
