@@ -120,4 +120,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Testing Infrastructure | 3/3 | Complete    | 2026-03-14 |
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 5/5 | Complete   | 2026-03-15 |
-| 5. Public API Stabilization | 1/3 | In Progress|  |
+| 5. Public API Stabilization | 2/3 | In Progress|  |

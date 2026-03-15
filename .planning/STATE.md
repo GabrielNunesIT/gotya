@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-15T16:15:01.477Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-15T16:20:53.090Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 0
 ---
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-protobuf-generator P04 | 2min | 1 tasks | 3 files |
 | Phase 04-protobuf-generator P05 | 1min | 2 tasks | 207 files |
 | Phase 05-public-api-stabilization P01 | 3min | 1 tasks | 1 files |
+| Phase 05-public-api-stabilization P02 | 10min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,9 @@ Recent decisions affecting current work:
 - [Phase 04-protobuf-generator]: identity is the only unsupported statement: identityref emits string field, no typed enum for identity hierarchy in v1
 - [Phase 05-public-api-stabilization]: gotya_test.go uses package gotya_test (external) — callers cannot import ast/schema/compiler directly
 - [Phase 05-public-api-stabilization]: Schema() accessor pattern chosen for TestCompile_OpaqueReturn — method call verifiable at compile time without schema import
+- [Phase 05-public-api-stabilization]: ParserDiagnostic exported (capital P) from parser package — external packages need to access Line/Column/Message fields; unexported struct fields are inaccessible across packages
+- [Phase 05-public-api-stabilization]: parseContent() internal helper shared by Parse() and ParseFile() — filename is empty string for Parse(), cleanPath for ParseFile()
+- [Phase 05-public-api-stabilization]: isValidYANGIdentifier() checks first byte per RFC 7950 §6.2 — minimal fix to reject @@ prefixes; addError() called in parseStatement() for invalid keyword identifiers
 
 ### Pending Todos
 
@@ -130,6 +134,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T16:15:01.476Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-03-15T16:20:53.088Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
