@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-protobuf-generator 04-03-PLAN.md
-last_updated: "2026-03-15T12:32:17.327Z"
+stopped_at: Completed 04-protobuf-generator 04-04-PLAN.md
+last_updated: "2026-03-15T12:34:15.541Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-protobuf-generator P01 | 2min | 2 tasks | 4 files |
 | Phase 04-protobuf-generator P02 | 3min | 1 tasks | 2 files |
 | Phase 04-protobuf-generator P03 | 4min | 2 tasks | 2 files |
+| Phase 04-protobuf-generator P04 | 2min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Recent decisions affecting current work:
 - [Phase 04-protobuf-generator]: containsAnyNode takes []*schema.Module for consistent signature — single-module Generate wraps with []*schema.Module{mod}
 - [Phase 04-protobuf-generator]: collectRPCActions recurses into containers/lists to find nested actions (RFC 7950 §7.15 actions attach to data nodes, not module root)
 - [Phase 04-protobuf-generator]: Service block post-loop emits after all message blocks — prevents nested services proto error
+- [Phase 04-protobuf-generator]: Track CEL-annotated fields by proto field name (not YANG name) — schema lookup by proto name naturally fails for hyphenated YANG names (v1 limitation)
+- [Phase 04-protobuf-generator]: annotatedFields and currentModuleName stored as ProtoGenerator fields, reset each GenerateDevice call — avoids threading extra params through generateField signatures
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T12:32:17.325Z
-Stopped at: Completed 04-protobuf-generator 04-03-PLAN.md
+Last session: 2026-03-15T12:34:15.539Z
+Stopped at: Completed 04-protobuf-generator 04-04-PLAN.md
 Resume file: None
