@@ -22,6 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Go Generator** - Audit and fill Go generator gaps so all YANG statement types produce valid, correct Go output (completed 2026-03-14)
 - [x] **Phase 4: Protobuf Generator** - Audit and fill Protobuf generator gaps so all relevant YANG constructs produce valid Proto output (completed 2026-03-15)
 - [x] **Phase 5: Public API Stabilization** - Harden the public API surface before v1 tag so it can be depended on without a future major version bump (completed 2026-03-15)
+- [ ] **Phase 6: v1.0 Gap Closure** - Close the two gaps identified by the milestone audit: migrate compiler_test.go to errors.Is assertions (TEST-03) and fix Compile() multi-module error accumulation (API-02)
 
 ## Phase Details
 
@@ -109,10 +110,20 @@ Plans:
 - [ ] 05-02-PLAN.md — API-01/02: parser diagnostics + ParseError/Diagnostic types + rewrite Parse()/ParseFile() (Wave 2)
 - [ ] 05-03-PLAN.md — API-03/04: opaque ASTModule/Module wrappers + CompileOptions + cmd/gotya update + godoc cleanup (Wave 3)
 
+### Phase 6: v1.0 Gap Closure
+**Goal**: Close the two gaps identified by the v1.0 milestone audit — compiler sentinel assertions are verified via errors.Is (TEST-03) and Compile() accumulates errors across all modules instead of stopping at the first (API-02)
+**Depends on**: Phase 5
+**Requirements**: TEST-03, API-02
+**Gap Closure:** Closes gaps from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. `compiler/compiler_test.go` contains zero `assert.Contains(err.Error(), ...)` calls — all error assertions use `assert.ErrorIs(t, err, compiler.ErrXxx)` against the sentinel variables
+  2. Calling `gotya.Compile()` with a slice of modules where multiple modules have errors returns a single aggregate error containing diagnostics from ALL failing modules, not just the first
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -121,3 +132,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 5/5 | Complete   | 2026-03-15 |
 | 5. Public API Stabilization | 3/3 | Complete   | 2026-03-15 |
+| 6. v1.0 Gap Closure | 0/TBD | Not started | - |
