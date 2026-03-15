@@ -16,8 +16,6 @@ import (
 // TestCELPathValidationValid verifies that GenerateDevice with GenerateCELValidation=true
 // returns nil when all annotated leaf fields exist in the schema.
 func TestCELPathValidationValid(t *testing.T) {
-	t.Fatal("not yet implemented")
-
 	t.Parallel()
 	yangSource := `
 module test-cel-valid {
@@ -61,8 +59,6 @@ module test-cel-valid {
 // returns a non-nil error containing "CEL path validation failed" when an annotated leaf path
 // has no corresponding schema node.
 func TestCELPathValidationInvalid(t *testing.T) {
-	t.Fatal("not yet implemented")
-
 	t.Parallel()
 	// Manually construct a schema module where a leaf has a CEL annotation path that
 	// does not correspond to any real schema node. We do this by creating a module
@@ -95,8 +91,6 @@ func TestCELPathValidationInvalid(t *testing.T) {
 // TestCELPathValidationAllErrors verifies that when multiple invalid CEL paths exist,
 // all of them are reported in the error (not just the first).
 func TestCELPathValidationAllErrors(t *testing.T) {
-	t.Fatal("not yet implemented")
-
 	t.Parallel()
 	// Construct a module with two leaves that have type constraints (triggering CEL annotations)
 	// and verify that if both paths are invalid, both appear in the error message.

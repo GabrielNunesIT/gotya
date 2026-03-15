@@ -2,6 +2,7 @@ package protobuf
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gotya/gotya/schema"
@@ -124,6 +125,42 @@ func parseBounds(expr string) (string, string, bool) {
 		return parts[0], parts[0], false
 	}
 	return parts[0], parts[1], false
+}
+
+// collectCELPathErrors validates that each annotated field (by proto field name) exists somewhere
+// in the corresponding module's schema tree. Returns all invalid paths — nil if all valid.
+// annotatedFields maps protoFieldName -> moduleName for fields that received CEL annotations.
+func collectCELPathErrors(modules []*schema.Module, annotatedFields map[string]string) []string {
+	var errs []string
+	for protoFieldName, modName := range annotatedFields {
+		var found bool
+		for _, mod := range modules {
+			if mod.Name == modName && findNodeByYangName(mod.Nodes, protoFieldName) != nil {
+				found = true
+				break
+			}
+		}
+		if !found {
+			errs = append(errs, fmt.Sprintf("module %s: CEL annotation path %q has no corresponding schema node", modName, protoFieldName))
+		}
+	}
+	sort.Strings(errs)
+	return errs
+}
+
+// findNodeByYangName recursively searches nodes for a node whose name matches the given name.
+func findNodeByYangName(nodes map[string]schema.Node, name string) schema.Node {
+	if n, ok := nodes[name]; ok {
+		return n
+	}
+	for _, node := range nodes {
+		if children := node.GetChildren(); len(children) > 0 {
+			if found := findNodeByYangName(children, name); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
 }
 
 // translateBoundsToCEL converts a complex YANG constraint with '|' to a CEL expression.
