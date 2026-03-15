@@ -68,8 +68,6 @@ func main() {
 		}
 
 		astModules = append(astModules, astMod)
-		// Register top-level modules explicitly in the loader so they can be referenced inside their own tree.
-		loader.astCache[astMod.Argument()] = astMod
 	}
 
 	// 2. Compile modules
