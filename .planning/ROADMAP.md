@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Go Generator** - Audit and fill Go generator gaps so all YANG statement types produce valid, correct Go output (completed 2026-03-14)
 - [x] **Phase 4: Protobuf Generator** - Audit and fill Protobuf generator gaps so all relevant YANG constructs produce valid Proto output (completed 2026-03-15)
 - [x] **Phase 5: Public API Stabilization** - Harden the public API surface before v1 tag so it can be depended on without a future major version bump (completed 2026-03-15)
-- [ ] **Phase 6: v1.0 Gap Closure** - Close the two gaps identified by the milestone audit: migrate compiler_test.go to errors.Is assertions (TEST-03) and fix Compile() multi-module error accumulation (API-02)
+- [x] **Phase 6: v1.0 Gap Closure** - Close the two gaps identified by the milestone audit: migrate compiler_test.go to errors.Is assertions (TEST-03) and fix Compile() multi-module error accumulation (API-02) (completed 2026-03-15)
 
 ## Phase Details
 
@@ -137,4 +137,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Go Generator | 5/5 | Complete   | 2026-03-14 |
 | 4. Protobuf Generator | 5/5 | Complete   | 2026-03-15 |
 | 5. Public API Stabilization | 3/3 | Complete   | 2026-03-15 |
-| 6. v1.0 Gap Closure | 2/3 | In Progress|  |
+| 6. v1.0 Gap Closure | 3/3 | Complete   | 2026-03-15 |
