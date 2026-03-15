@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Gap Closure
 status: planning
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-03-15T20:48:17.327Z"
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-15T20:48:31.638Z"
 last_activity: 2026-03-14 — Roadmap created; 22 v1 requirements mapped across 5 phases
 progress:
   total_phases: 6
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-public-api-stabilization P02 | 10min | 2 tasks | 4 files |
 | Phase 05-public-api-stabilization P03 | 2min | 2 tasks | 2 files |
 | Phase 06-v1-gap-closure P02 | 10min | 1 tasks | 2 files |
+| Phase 06-v1-gap-closure P01 | 2min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,7 @@ Recent decisions affecting current work:
 - [Phase 05-public-api-stabilization]: Removed loader.astCache manual population in main.go — loader.Load->LoadAST caches from disk; opaque ASTModule makes direct field access impossible
 - [Phase 06-v1-gap-closure]: errors.Join used for Compile() multi-module error accumulation — stdlib, no new dependencies, errors.Is traverses joined chain automatically
 - [Phase 06-v1-gap-closure]: Shared compiler.New(compOpts) instance retained across modules in Compile() — preserves cross-module state sharing
+- [Phase 06-v1-gap-closure]: Validator refactored to call c.addError(sentinel, msg) directly — each error category carries correct sentinel for errors.Is
 
 ### Pending Todos
 
@@ -140,6 +142,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T20:48:17.326Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-03-15T20:48:31.636Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
