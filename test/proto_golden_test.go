@@ -18,11 +18,11 @@ import (
 // update is shared with corpus_test.go if defined there; declare only if not already declared.
 // Since both files live in the same package "test", we must avoid duplicate var declarations.
 // The -update flag is declared here for proto golden files only.
-var updateProto = flag.Bool("update-proto", false, "regenerate golden .proto files in testdata/proto/")
+var updateProto = flag.Bool("update-proto", false, "regenerate golden .proto files in test/out/proto/")
 
 // TestGoldenProto runs every YANG file in test/assets/yangs/ through the full
 // parse→compile→GenerateDevice pipeline for the proto generator and compares output
-// to stored golden files in testdata/proto/.
+// to stored golden files in test/out/proto/.
 //
 // Run with -update-proto to regenerate all golden files.
 func TestGoldenProto(t *testing.T) {
@@ -63,7 +63,7 @@ func TestGoldenProto(t *testing.T) {
 		t.Fatal("corpus loaded zero modules — corpus directory may be missing or empty")
 	}
 
-	goldenDir := filepath.Join("..", "testdata", "proto")
+	goldenDir := filepath.Join("out", "proto")
 
 	// Create golden directory before launching parallel subtests to avoid race on mkdir.
 	if *updateProto {
