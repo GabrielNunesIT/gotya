@@ -127,21 +127,26 @@ func parseBounds(expr string) (string, string, bool) {
 	return parts[0], parts[1], false
 }
 
+type celAnnotatedField struct {
+	ModuleName     string
+	ProtoFieldName string
+	SchemaNodeName string
+}
+
 // collectCELPathErrors validates that each annotated field (by proto field name) exists somewhere
 // in the corresponding module's schema tree. Returns all invalid paths — nil if all valid.
-// annotatedFields maps protoFieldName -> moduleName for fields that received CEL annotations.
-func collectCELPathErrors(modules []*schema.Module, annotatedFields map[string]string) []string {
+func collectCELPathErrors(modules []*schema.Module, annotatedFields map[string]celAnnotatedField) []string {
 	var errs []string
-	for protoFieldName, modName := range annotatedFields {
+	for _, ann := range annotatedFields {
 		var found bool
 		for _, mod := range modules {
-			if mod.Name == modName && findNodeByYangName(mod.Nodes, protoFieldName) != nil {
+			if mod.Name == ann.ModuleName && findNodeByYangName(mod.Nodes, ann.SchemaNodeName) != nil {
 				found = true
 				break
 			}
 		}
 		if !found {
-			errs = append(errs, fmt.Sprintf("module %s: CEL annotation path %q has no corresponding schema node", modName, protoFieldName))
+			errs = append(errs, fmt.Sprintf("module %s: CEL annotation path %q has no corresponding schema node", ann.ModuleName, ann.ProtoFieldName))
 		}
 	}
 	sort.Strings(errs)

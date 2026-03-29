@@ -74,7 +74,9 @@ func TestCELPathValidationInvalid(t *testing.T) {
 		Name:   "string",
 		Length: []string{"1..64"},
 	})
-	require.NoError(t, mod.AddNode(leaf))
+	// Deliberately store the node under a mismatched map key so lookups by schema node
+	// name fail during CEL path validation.
+	mod.Nodes["different-key"] = leaf
 
 	gen := protobuf.New(&protobuf.Options{
 		PackageName:           "test",
@@ -107,8 +109,10 @@ func TestCELPathValidationAllErrors(t *testing.T) {
 		Name:    "int32",
 		Range:   []string{"1..100"},
 	})
-	require.NoError(t, mod.AddNode(leaf1))
-	require.NoError(t, mod.AddNode(leaf2))
+	// Deliberately store nodes under mismatched map keys so lookups by schema node
+	// names fail during CEL path validation.
+	mod.Nodes["different-first-key"] = leaf1
+	mod.Nodes["different-second-key"] = leaf2
 
 	gen := protobuf.New(&protobuf.Options{
 		PackageName:           "test",
