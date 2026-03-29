@@ -5,9 +5,9 @@ import (
 	"go/format"
 	"testing"
 
-	"github.com/gotya/gotya/ast"
-	"github.com/gotya/gotya/generator/golang"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/ast"
+	"github.com/GabrielNunesIT/gotya/generator/golang"
+	"github.com/GabrielNunesIT/gotya/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

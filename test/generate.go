@@ -10,13 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gotya/gotya/ast"
-	"github.com/gotya/gotya/compiler"
-	"github.com/gotya/gotya/generator/golang"
-	"github.com/gotya/gotya/generator/protobuf"
-	"github.com/gotya/gotya/parser"
-	"github.com/gotya/gotya/parser/lexer"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/ast"
+	"github.com/GabrielNunesIT/gotya/compiler"
+	"github.com/GabrielNunesIT/gotya/generator/golang"
+	"github.com/GabrielNunesIT/gotya/generator/protobuf"
+	"github.com/GabrielNunesIT/gotya/parser"
+	"github.com/GabrielNunesIT/gotya/parser/lexer"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // fileLoader is a custom loader for the true local ast/schema from a directory

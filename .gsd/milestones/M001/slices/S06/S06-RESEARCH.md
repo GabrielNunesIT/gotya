@@ -364,7 +364,7 @@ func TestCompile_MultiModuleErrors(t *testing.T) {
 }
 ```
 
-**IMPORTANT NOTE on TestCompile_MultiModuleErrors:** The `gotya_test` package (external) cannot import `compiler` directly. The locked decision says "assert `errors.Is` for both sentinels" — this is achievable only if `compiler.ErrXxx` sentinels are re-exported from the `gotya` package, OR if the test imports `compiler` explicitly. Looking at the existing `gotya_test.go`, it imports only `github.com/gotya/gotya`. The CONTEXT.md says to assert `errors.Is` for both sentinels. The planner must decide: either import `compiler` in the test (valid since `compiler` is an internal package of the same module), or use a different approach. The test file already has `"errors"` in its imports.
+**IMPORTANT NOTE on TestCompile_MultiModuleErrors:** The `gotya_test` package (external) cannot import `compiler` directly. The locked decision says "assert `errors.Is` for both sentinels" — this is achievable only if `compiler.ErrXxx` sentinels are re-exported from the `gotya` package, OR if the test imports `compiler` explicitly. Looking at the existing `gotya_test.go`, it imports only `github.com/GabrielNunesIT/gotya`. The CONTEXT.md says to assert `errors.Is` for both sentinels. The planner must decide: either import `compiler` in the test (valid since `compiler` is an internal package of the same module), or use a different approach. The test file already has `"errors"` in its imports.
 
 ## Complete 21-Site Migration Map
 
@@ -409,7 +409,7 @@ func TestCompile_MultiModuleErrors(t *testing.T) {
 ## Open Questions
 
 1. **TestCompile_MultiModuleErrors: can gotya_test import compiler?**
-   - What we know: `gotya_test.go` uses `package gotya_test` (external); it currently imports only `github.com/gotya/gotya`. The `compiler` package is within the same module (`github.com/gotya/gotya/compiler`).
+   - What we know: `gotya_test.go` uses `package gotya_test` (external); it currently imports only `github.com/GabrielNunesIT/gotya`. The `compiler` package is within the same module (`github.com/GabrielNunesIT/gotya/compiler`).
    - What's unclear: CONTEXT.md says "assert `errors.Is` for both sentinels" — this requires access to `compiler.ErrXxx` constants from the test, which means either importing `compiler` in `gotya_test.go` or re-exporting the sentinels via `gotya` package.
    - Recommendation: Import `compiler` directly in `gotya_test.go` for the new test. It is a same-module package. The existing precedent (`compiler_test.go` imports `compiler`) shows this is the project pattern. The planner should clarify import structure for the new test.
 

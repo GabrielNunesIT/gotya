@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gotya/gotya/compiler"
-	"github.com/gotya/gotya/generator/golang"
-	"github.com/gotya/gotya/parser"
-	"github.com/gotya/gotya/parser/lexer"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/compiler"
+	"github.com/GabrielNunesIT/gotya/generator/golang"
+	"github.com/GabrielNunesIT/gotya/parser"
+	"github.com/GabrielNunesIT/gotya/parser/lexer"
+	"github.com/GabrielNunesIT/gotya/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

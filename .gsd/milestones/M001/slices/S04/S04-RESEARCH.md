@@ -61,7 +61,7 @@ The golden file pattern does not exist yet for the proto generator. The `testdat
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| `github.com/gotya/gotya/schema` | (project-internal) | Schema node types for all YANG constructs | The only schema representation in the project |
+| `github.com/GabrielNunesIT/gotya/schema` | (project-internal) | Schema node types for all YANG constructs | The only schema representation in the project |
 | `github.com/stretchr/testify` | v1.11.1 | Assertions in tests | Already used in all test files |
 | stdlib `strings`, `fmt`, `io`, `sort` | Go stdlib | Output formatting and I/O | Already in use in generator.go |
 | stdlib `flag` | Go stdlib | `-update` flag for golden file regeneration | Standard Go testing pattern; no new dep |

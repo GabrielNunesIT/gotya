@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/gotya/gotya/codec/rfc7951"
+	"github.com/GabrielNunesIT/gotya/codec/rfc7951"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

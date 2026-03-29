@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gotya/gotya/ast"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/ast"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // Sentinel errors for compiler diagnostics. Use errors.Is to test for a specific condition.

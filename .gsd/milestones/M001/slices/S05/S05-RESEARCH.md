@@ -175,7 +175,7 @@ func (m *Module) Schema() *schema.Module {
 
 ### Pattern 5: `compiler.Options` Leakage
 
-**What:** `Compile(astModules []*ASTModule, opts *compiler.Options)` exposes `compiler.Options` as a parameter type. This forces callers to import `github.com/gotya/gotya/compiler`.
+**What:** `Compile(astModules []*ASTModule, opts *compiler.Options)` exposes `compiler.Options` as a parameter type. This forces callers to import `github.com/GabrielNunesIT/gotya/compiler`.
 
 **Decision needed (Claude's discretion):** The CONTEXT.md decisions do not explicitly address `compiler.Options`. Options:
 1. Define `type Options struct` in `gotya.go` with the same fields and translate to `compiler.Options` internally.

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // buildValidateOptions constructs standard or CEL-based bufbuild/protovalidate

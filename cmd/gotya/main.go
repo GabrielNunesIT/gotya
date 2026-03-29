@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gotya/gotya"
-	"github.com/gotya/gotya/generator/golang"
-	"github.com/gotya/gotya/generator/protobuf"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya"
+	"github.com/GabrielNunesIT/gotya/generator/golang"
+	"github.com/GabrielNunesIT/gotya/generator/protobuf"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // main is the CLI tool entrypoint for parsing and compiling YANG files using gotya.

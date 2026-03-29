@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 func TestBuildValidateOptions(t *testing.T) {

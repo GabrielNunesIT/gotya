@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gotya/gotya/generator"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/generator"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // Options holds configuration for the Go generator.

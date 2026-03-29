@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/gotya/gotya/token"
+	"github.com/GabrielNunesIT/gotya/token"
 )
 
 // Lexer produces a stream of tokens from a YANG input string.

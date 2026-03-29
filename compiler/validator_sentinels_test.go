@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gotya/gotya/compiler"
+	"github.com/GabrielNunesIT/gotya/compiler"
 )
 
 // TestValidatorSentinels_IdentityrefBase verifies that an invalid identityref base

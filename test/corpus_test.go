@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gotya/gotya/ast"
-	"github.com/gotya/gotya/compiler"
-	golanggenerator "github.com/gotya/gotya/generator/golang"
-	"github.com/gotya/gotya/parser"
-	"github.com/gotya/gotya/parser/lexer"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/ast"
+	"github.com/GabrielNunesIT/gotya/compiler"
+	golanggenerator "github.com/GabrielNunesIT/gotya/generator/golang"
+	"github.com/GabrielNunesIT/gotya/parser"
+	"github.com/GabrielNunesIT/gotya/parser/lexer"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // corpusLoader is a copy of fileLoader from generate.go (which has //go:build ignore and

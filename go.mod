@@ -1,4 +1,4 @@
-module github.com/gotya/gotya
+module github.com/GabrielNunesIT/gotya
 
 go 1.25.5
 

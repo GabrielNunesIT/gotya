@@ -7,7 +7,7 @@ A modern, fast, and strict YANG parser and compiler written in Go.
 ## Installation
 
 ```bash
-go get github.com/gotya/gotya
+go get github.com/GabrielNunesIT/gotya
 ```
 
 ## Quick Start
@@ -21,8 +21,8 @@ import (
  "fmt"
  "log"
 
- "github.com/gotya/gotya"
- "github.com/gotya/gotya/compiler"
+ "github.com/GabrielNunesIT/gotya"
+ "github.com/GabrielNunesIT/gotya/compiler"
 )
 
 func main() {

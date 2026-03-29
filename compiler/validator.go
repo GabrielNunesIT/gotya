@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/schema"
 )
 
 // Validator performs semantic validation on a compiled schema module.

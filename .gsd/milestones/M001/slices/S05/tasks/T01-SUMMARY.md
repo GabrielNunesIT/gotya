@@ -38,7 +38,7 @@ blocker_discovered: false
 ## Accomplishments
 - Created `gotya_test.go` as `package gotya_test` with 6 test functions, all producing compile-time RED failures
 - Tests confirm the three API contracts: `ParseError` type (API-01/02), opaque return types (API-03), and diagnostic File field (API-02)
-- File imports only `github.com/gotya/gotya`, `errors`, `os`, `testing`, and `testify/require` — no `ast`, `schema`, or `compiler` packages
+- File imports only `github.com/GabrielNunesIT/gotya`, `errors`, `os`, `testing`, and `testify/require` — no `ast`, `schema`, or `compiler` packages
 - Compilation fails with `undefined: gotya.ParseError` and related errors — establishing the RED baseline for plans 02 and 03
 
 ## Task Commits

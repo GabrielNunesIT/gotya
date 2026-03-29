@@ -1,6 +1,6 @@
 with-expecter: true
 packages:
-  github.com/gotya/gotya/...:
+  github.com/GabrielNunesIT/gotya/...:
     config:
       dir: "{{.InterfaceDir}}"
       mockname: "Mock{{.InterfaceName}}"

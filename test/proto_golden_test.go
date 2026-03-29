@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gotya/gotya/ast"
-	protobuf "github.com/gotya/gotya/generator/protobuf"
-	"github.com/gotya/gotya/schema"
+	"github.com/GabrielNunesIT/gotya/ast"
+	protobuf "github.com/GabrielNunesIT/gotya/generator/protobuf"
+	"github.com/GabrielNunesIT/gotya/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

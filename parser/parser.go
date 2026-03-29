@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/gotya/gotya/ast"
-	"github.com/gotya/gotya/parser/lexer"
-	"github.com/gotya/gotya/token"
+	"github.com/GabrielNunesIT/gotya/ast"
+	"github.com/GabrielNunesIT/gotya/parser/lexer"
+	"github.com/GabrielNunesIT/gotya/token"
 )
 
 // ParserDiagnostic holds structured position and message data for a single parse error.

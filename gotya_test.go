@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gotya/gotya"
-	"github.com/gotya/gotya/compiler"
+	"github.com/GabrielNunesIT/gotya"
+	"github.com/GabrielNunesIT/gotya/compiler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
