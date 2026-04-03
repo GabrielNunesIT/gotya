@@ -22,7 +22,6 @@ import (
  "log"
 
  "github.com/GabrielNunesIT/gotya"
- "github.com/GabrielNunesIT/gotya/compiler"
 )
 
 func main() {
@@ -45,16 +44,27 @@ func main() {
  }
 
  // 2. Compile the AST module into a semantic schema module
- schemaModules, err := gotya.Compile([]*gotya.ASTModule{astModule}, &compiler.Options{})
+ modules, err := gotya.Compile([]*gotya.ASTModule{astModule}, nil)
  if err != nil {
   log.Fatalf("Failed to compile: %v", err)
  }
 
- for _, mod := range schemaModules {
-  fmt.Printf("Successfully compiled module: %s\n", mod.Name)
+ for _, mod := range modules {
+  fmt.Printf("Successfully compiled module: %s\n", mod.Schema().Name)
  }
 }
 ```
+
+## Testing
+
+`gotya` uses reproducible inline test fixtures to ensure test reliability and portability:
+
+- **Test Fixtures**: YANG module fixtures are defined as inline strings in test files, written to temporary directories at test runtime
+- **No External Dependencies**: Tests do not depend on external YANG files or assets, making them fully self-contained
+- **Reproducibility**: All tests produce deterministic results and can run in any environment without additional setup
+- **Running Tests**: Execute `go test ./...` to run the full test suite
+
+This approach ensures tests are fast, reliable, and can be run in parallel without interference.
 
 ## Development
 

@@ -104,7 +104,9 @@ func (l *DirectoryLoader) Load(name string) (*schema.Module, error) {
 	comp := compiler.New(&compiler.Options{Loader: l})
 	schemaMod, err := comp.Compile(astMod)
 
-	if schemaMod != nil {
+	// Only cache the schema module if compilation succeeded (no errors).
+	// This prevents partial/invalid modules from being cached and reused.
+	if err == nil && schemaMod != nil {
 		l.schemaCache[name] = schemaMod
 		if schemaMod.Name != name && schemaMod.Name != "" {
 			l.schemaCache[schemaMod.Name] = schemaMod

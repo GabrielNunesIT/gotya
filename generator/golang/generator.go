@@ -1080,27 +1080,17 @@ func (g *GoGenerator) generateValidationChecks(structName string, flatNodes []sc
 	return nil
 }
 
-// getOrderedChildNames returns the names of children sorted by their schema definition order.
+// getOrderedChildNames returns child names in deterministic lexical order.
+//
+// Some schema construction paths can assign different insertion-derived order
+// values across runs (e.g. map-backed merge/augment flows). Using lexical
+// ordering here guarantees stable code generation output across runs.
 func getOrderedChildNames(children map[string]schema.Node) []string {
-	type nameOrder struct {
-		name  string
-		order int
+	names := make([]string, 0, len(children))
+	for name := range children {
+		names = append(names, name)
 	}
-	list := make([]nameOrder, 0, len(children))
-	for name, node := range children {
-		list = append(list, nameOrder{
-			name:  name,
-			order: node.GetBase().Order,
-		})
-	}
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].order < list[j].order
-	})
-
-	names := make([]string, len(list))
-	for i, item := range list {
-		names[i] = item.name
-	}
+	sort.Strings(names)
 	return names
 }
 

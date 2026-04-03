@@ -49,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	searchPaths := []string{""} // Default empty directory path (.)
+	searchPaths := []string{"."} // Default to current directory
 	if *pathsFlag != "" {
 		searchPaths = append(searchPaths, strings.Split(*pathsFlag, ",")...)
 	}
