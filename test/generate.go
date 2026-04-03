@@ -19,6 +19,52 @@ import (
 	"github.com/GabrielNunesIT/gotya/schema"
 )
 
+var generatorFixtureModules = map[string]string{
+	"test-types": `module test-types {
+	namespace "urn:test-types";
+	prefix tt;
+
+	grouping common-fields {
+		leaf id {
+			type string;
+		}
+	}
+}
+`,
+	"test-main": `module test-main {
+	namespace "urn:test-main";
+	prefix tm;
+
+	import test-types { prefix tt; }
+
+	container system {
+		uses tt:common-fields;
+		leaf enabled {
+			type boolean;
+		}
+	}
+}
+`,
+	"test-rpc": `module test-rpc {
+	namespace "urn:test-rpc";
+	prefix tr;
+
+	rpc reboot {
+		input {
+			leaf reason {
+				type string;
+			}
+		}
+		output {
+			leaf accepted {
+				type boolean;
+			}
+		}
+	}
+}
+`,
+}
+
 // fileLoader is a custom loader for the true local ast/schema from a directory
 type fileLoader struct {
 	dir         string
@@ -107,33 +153,29 @@ func (l *fileLoader) Load(name string) (*schema.Module, error) {
 // Why: Having a standalone binary file allows go:generate to be easily used locally or on CI/CD
 // without distributing multiple complex scripts.
 func main() {
-	yangsDir := filepath.Join("assets", "yangs")
 	outDir := "out"
-
-	files, err := os.ReadDir(yangsDir)
+	tmpDir, err := os.MkdirTemp("", "gotya-fixtures-")
 	if err != nil {
-		log.Fatalf("Failed to read yangs directory: %v", err)
+		log.Fatalf("Failed to create temporary fixture directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	moduleNames := make([]string, 0, len(generatorFixtureModules))
+	for name, src := range generatorFixtureModules {
+		if err := os.WriteFile(filepath.Join(tmpDir, name+".yang"), []byte(src), 0600); err != nil {
+			log.Fatalf("Failed to write fixture module %s: %v", name, err)
+		}
+		moduleNames = append(moduleNames, name)
 	}
 
 	loader := &fileLoader{
-		dir:         yangsDir,
+		dir:         tmpDir,
 		astCache:    make(map[string]*ast.Module),
 		schemaCache: make(map[string]*schema.Module),
 	}
 
 	var modules []*schema.Module
-	for _, f := range files {
-		if f.IsDir() || filepath.Ext(f.Name()) != ".yang" {
-			continue
-		}
-
-		modName := f.Name()
-		if idx := strings.Index(modName, "@"); idx != -1 {
-			modName = modName[:idx]
-		} else {
-			modName = strings.TrimSuffix(modName, ".yang")
-		}
-
+	for _, modName := range moduleNames {
 		astMod, err := loader.LoadAST(modName)
 		if err != nil {
 			log.Printf("Failed to load AST for %s: %v", modName, err)

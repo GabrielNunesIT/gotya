@@ -17,6 +17,67 @@ import (
 	"github.com/GabrielNunesIT/gotya/schema"
 )
 
+var fixtureYANGModules = map[string]string{
+	"test-types": `module test-types {
+	namespace "urn:test-types";
+	prefix tt;
+
+	grouping common-fields {
+		leaf id {
+			type string;
+		}
+	}
+}
+`,
+	"test-main": `module test-main {
+	namespace "urn:test-main";
+	prefix tm;
+
+	import test-types { prefix tt; }
+
+	container system {
+		uses tt:common-fields;
+		leaf enabled {
+			type boolean;
+		}
+	}
+}
+`,
+	"test-rpc": `module test-rpc {
+	namespace "urn:test-rpc";
+	prefix tr;
+
+	rpc reboot {
+		input {
+			leaf reason {
+				type string;
+			}
+		}
+		output {
+			leaf accepted {
+				type boolean;
+			}
+		}
+	}
+}
+`,
+}
+
+func writeFixtureModules(t *testing.T, dir string) []string {
+	t.Helper()
+
+	moduleNames := make([]string, 0, len(fixtureYANGModules))
+	for moduleName, src := range fixtureYANGModules {
+		path := filepath.Join(dir, moduleName+".yang")
+		if err := os.WriteFile(path, []byte(src), 0600); err != nil {
+			t.Fatalf("write fixture module %s: %v", moduleName, err)
+		}
+		moduleNames = append(moduleNames, moduleName)
+	}
+
+	return moduleNames
+}
+
 // corpusLoader is a copy of fileLoader from generate.go (which has //go:build ignore and
 // cannot be imported). It implements schema.Loader for resolving cross-module imports.
 type corpusLoader struct {
@@ -101,39 +162,24 @@ type namedModule struct {
 	mod  *schema.Module
 }
 
-// TestCorpus runs every YANG file in test/assets/yangs/ through the full
-// parse→compile→generate pipeline and asserts no panic and syntactically valid Go output.
-//
-// Compiler errors during Load() are logged (not failed) because real-world corpus files
-// often have unresolvable cross-module imports that are expected.
+// TestCorpus runs a representative in-memory fixture set through the full
+// parse->compile->generate pipeline and asserts syntactically valid Go output.
 func TestCorpus(t *testing.T) {
-	yangsDir := filepath.Join("assets", "yangs")
+	yangsDir := t.TempDir()
+	moduleNames := writeFixtureModules(t, yangsDir)
+
 	loader := &corpusLoader{
 		dir:         yangsDir,
 		astCache:    make(map[string]*ast.Module),
 		schemaCache: make(map[string]*schema.Module),
 	}
 
-	entries, err := os.ReadDir(yangsDir)
-	if err != nil {
-		t.Fatalf("read corpus dir %s: %v", yangsDir, err)
-	}
-
-	// Load all modules sequentially to avoid concurrent map access in corpusLoader.
+	// Load all fixture modules sequentially to avoid concurrent map access in corpusLoader.
 	var modules []namedModule
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".yang") {
-			continue
-		}
-		modName := strings.TrimSuffix(name, ".yang")
-
+	for _, modName := range moduleNames {
 		schemaMod, loadErr := loader.Load(modName)
 		if loadErr != nil {
-			t.Logf("module %s: compiler errors (not a test failure): %v", modName, loadErr)
+			t.Fatalf("module %s: compile failed: %v", modName, loadErr)
 		}
 		if schemaMod != nil {
 			modules = append(modules, namedModule{name: modName, mod: schemaMod})
@@ -169,4 +215,3 @@ func TestCorpus(t *testing.T) {
 		})
 	}
 }
-

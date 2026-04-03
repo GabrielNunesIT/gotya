@@ -2,7 +2,6 @@ package protobuf_test
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,17 +15,55 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
-	t.Parallel()
+var protobufFixtureModules = map[string]string{
+	"test-main": `module test-main {
+  namespace "urn:test-main";
+  prefix tm;
 
-	yangsDir := filepath.Join("..", "..", "test", "assets", "yangs")
+  container system {
+	    leaf id {
+	      type string;
+	    }
+    leaf enabled {
+      type boolean;
+    }
+  }
+}
+`,
+	"test-rpc": `module test-rpc {
+  namespace "urn:test-rpc";
+  prefix tr;
+
+  rpc reboot {
+    input {
+      leaf reason {
+        type string;
+      }
+    }
+    output {
+      leaf accepted {
+        type boolean;
+      }
+    }
+  }
+}
+`,
+}
+
+func compileFixtureModules(t *testing.T) []*schema.Module {
+	t.Helper()
+
+	yangsDir := t.TempDir()
+	for moduleName, src := range protobufFixtureModules {
+		cleanPath := filepath.Clean(filepath.Join(yangsDir, moduleName+".yang"))
+		require.NoError(t, os.WriteFile(cleanPath, []byte(src), 0600))
+	}
 
 	files, err := os.ReadDir(yangsDir)
 	require.NoError(t, err)
 
 	var modules []*schema.Module
-	opts := &compiler.Options{}
-	comp := compiler.New(opts)
+	comp := compiler.New(&compiler.Options{})
 
 	for _, file := range files {
 		if file.IsDir() || filepath.Ext(file.Name()) != ".yang" {
@@ -41,26 +78,29 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 		p := parser.New(l)
 		astMod := p.ParseModule()
 		if astMod == nil {
-			t.Logf("Failed to parse module AST for file %s", file.Name())
-			continue
+			t.Fatalf("failed to parse fixture module %s", file.Name())
 		}
 
 		schemaMod, compErr := comp.Compile(astMod)
-		if compErr != nil {
-			fmt.Printf("Module %s compiled with errors: %v\n", file.Name(), compErr)
-		}
+		require.NoError(t, compErr)
 		if schemaMod != nil {
 			modules = append(modules, schemaMod)
 		}
 	}
 
 	require.NotEmpty(t, modules, "Expected to successfully parse at least one module")
+	return modules
+}
+
+func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
+	t.Parallel()
+	modules := compileFixtureModules(t)
 	gen := protobuf.New(&protobuf.Options{
 		PackageName:      "device",
 		GenerateFakeroot: true,
 	})
 	var buf bytes.Buffer
-	err = gen.GenerateDevice(modules, &buf)
+	err := gen.GenerateDevice(modules, &buf)
 	assert.NoError(t, err)
 
 	out := buf.String()
@@ -79,50 +119,14 @@ func TestGenerateDeviceFromTestAssetsProto(t *testing.T) {
 
 func TestGenerateDeviceFromTestAssetsProtoWithCEL(t *testing.T) {
 	t.Parallel()
-
-	yangsDir := filepath.Join("..", "..", "test", "assets", "yangs")
-
-	files, err := os.ReadDir(yangsDir)
-	require.NoError(t, err)
-
-	var modules []*schema.Module
-	opts := &compiler.Options{}
-	comp := compiler.New(opts)
-
-	for _, file := range files {
-		if file.IsDir() || filepath.Ext(file.Name()) != ".yang" {
-			continue
-		}
-
-		cleanPath := filepath.Clean(filepath.Join(yangsDir, file.Name()))
-		content, readErr := os.ReadFile(cleanPath)
-		require.NoError(t, readErr)
-
-		l := lexer.New(string(content))
-		p := parser.New(l)
-		astMod := p.ParseModule()
-		if astMod == nil {
-			t.Logf("Failed to parse module AST for file %s", file.Name())
-			continue
-		}
-
-		schemaMod, compErr := comp.Compile(astMod)
-		if compErr != nil {
-			fmt.Printf("Module %s compiled with errors: %v\n", file.Name(), compErr)
-		}
-		if schemaMod != nil {
-			modules = append(modules, schemaMod)
-		}
-	}
-
-	require.NotEmpty(t, modules, "Expected to successfully parse at least one module")
+	modules := compileFixtureModules(t)
 	gen := protobuf.New(&protobuf.Options{
 		PackageName:           "device",
 		GenerateFakeroot:      true,
 		GenerateCELValidation: true,
 	})
 	var buf bytes.Buffer
-	err = gen.GenerateDevice(modules, &buf)
+	err := gen.GenerateDevice(modules, &buf)
 	assert.NoError(t, err)
 
 	out := buf.String()

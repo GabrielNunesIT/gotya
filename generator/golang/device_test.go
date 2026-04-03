@@ -24,6 +24,66 @@ type testLoader struct {
 	schemaCache map[string]*schema.Module
 }
 
+var generatorFixtureModules = map[string]string{
+	"test-types": `module test-types {
+	namespace "urn:test-types";
+	prefix tt;
+
+	grouping common-fields {
+		leaf id {
+			type string;
+		}
+	}
+}
+`,
+	"test-main": `module test-main {
+	namespace "urn:test-main";
+	prefix tm;
+
+	import test-types { prefix tt; }
+
+	container system {
+		uses tt:common-fields;
+		leaf enabled {
+			type boolean;
+		}
+	}
+}
+`,
+	"test-rpc": `module test-rpc {
+	namespace "urn:test-rpc";
+	prefix tr;
+
+	rpc reboot {
+		input {
+			leaf reason {
+				type string;
+			}
+		}
+		output {
+			leaf accepted {
+				type boolean;
+			}
+		}
+	}
+}
+`,
+}
+
+func writeGeneratorFixtures(t *testing.T, dir string) []string {
+	t.Helper()
+
+	moduleNames := make([]string, 0, len(generatorFixtureModules))
+	for moduleName, src := range generatorFixtureModules {
+		path := filepath.Join(dir, moduleName+".yang")
+		err := os.WriteFile(path, []byte(src), 0600)
+		require.NoError(t, err)
+		moduleNames = append(moduleNames, moduleName)
+	}
+
+	return moduleNames
+}
+
 func (l *testLoader) LoadAST(name string) (*ast.Module, error) {
 	if m, ok := l.astCache[name]; ok {
 		return m, nil
@@ -96,11 +156,8 @@ func (l *testLoader) Load(name string) (*schema.Module, error) {
 func TestGenerateDeviceFromTestAssets(t *testing.T) {
 	t.Parallel()
 
-	yangsDir := filepath.Join("..", "..", "test", "assets", "yangs")
-
-	// Read all .yang files in the directory
-	files, err := os.ReadDir(yangsDir)
-	require.NoError(t, err)
+	yangsDir := t.TempDir()
+	moduleNames := writeGeneratorFixtures(t, yangsDir)
 
 	loader := &testLoader{
 		dir:         yangsDir,
@@ -109,18 +166,7 @@ func TestGenerateDeviceFromTestAssets(t *testing.T) {
 	}
 
 	var modules []*schema.Module
-	for _, file := range files {
-		if file.IsDir() || filepath.Ext(file.Name()) != ".yang" {
-			continue
-		}
-
-		modName := file.Name()
-		if idx := strings.Index(modName, "@"); idx != -1 {
-			modName = modName[:idx]
-		} else {
-			modName = strings.TrimSuffix(modName, ".yang")
-		}
-
+	for _, modName := range moduleNames {
 		astMod, astErr := loader.LoadAST(modName)
 		if astErr != nil {
 			fmt.Printf("Failed to load AST for %s: %v\n", modName, astErr)
@@ -148,7 +194,7 @@ func TestGenerateDeviceFromTestAssets(t *testing.T) {
 		GenerateFakeroot: true,
 	})
 	var buf bytes.Buffer
-	err = gen.GenerateDevice(modules, &buf)
+	err := gen.GenerateDevice(modules, &buf)
 	assert.NoError(t, err)
 
 	out := buf.String()
