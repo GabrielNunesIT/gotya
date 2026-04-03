@@ -83,8 +83,9 @@ func (g *ProtoGenerator) Generate(mod *schema.Module, w io.Writer) error {
 	}
 
 	visited := make(map[string]bool)
+	modulePrefix := toCamelCaseTitle(mod.Name)
 	for _, node := range mod.Nodes {
-		if err := g.generateNode(node, w, visited); err != nil {
+		if err := g.generateNode(node, w, visited, modulePrefix); err != nil {
 			return err
 		}
 	}
@@ -165,6 +166,7 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 
 		g.currentModuleName = mod.Name
 
+		modulePrefix := toCamelCaseTitle(mod.Name)
 		modMsgName := toCamelCaseTitle(mod.Name)
 		if visited[modMsgName] {
 			continue
@@ -186,7 +188,7 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 				continue
 			}
 			allTopLevelNodes = append(allTopLevelNodes, moduleNode{moduleName: mod.Name, node: child}) // collect for deep generations
-			if err := g.generateField(child, w, &modFieldIndex); err != nil {
+			if err := g.generateField(child, w, &modFieldIndex, modulePrefix+modMsgName); err != nil {
 				return err
 			}
 		}
@@ -197,7 +199,8 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 
 	for _, modNode := range allTopLevelNodes {
 		g.currentModuleName = modNode.moduleName
-		if err := g.generateNode(modNode.node, w, visited); err != nil {
+		modulePrefix := toCamelCaseTitle(modNode.moduleName)
+		if err := g.generateNode(modNode.node, w, visited, modulePrefix); err != nil {
 			return err
 		}
 		if choice, ok := modNode.node.(*schema.Choice); ok {
@@ -212,29 +215,24 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 		}
 	}
 
-	// Emit service blocks — one per module that contains at least one RPC or Action.
-	// Actions may be nested inside containers/lists, so we collect them recursively.
+	// Emit service blocks for top-level YANG RPCs only.
+	// YANG actions are context-bound operations and are emitted as messages,
+	// but not as gRPC service methods.
 	for _, mod := range modules {
 		var rpcMethods []string
-		var collectRPCActions func(nodes map[string]schema.Node)
-		collectRPCActions = func(nodes map[string]schema.Node) {
-			for _, name := range getSortedChildNames(nodes) {
-				node := nodes[name]
-				switch n := node.(type) {
-				case *schema.RPC:
-					rpcPrefix := toCamelCaseTitle(n.Name())
-					rpcMethods = append(rpcMethods, fmt.Sprintf("\trpc %s(%sInput) returns (%sOutput);\n",
-						rpcPrefix, rpcPrefix, rpcPrefix))
-				case *schema.Action:
-					rpcPrefix := toCamelCaseTitle(n.Name())
-					rpcMethods = append(rpcMethods, fmt.Sprintf("\trpc %s(%sInput) returns (%sOutput);\n",
-						rpcPrefix, rpcPrefix, rpcPrefix))
-				case *schema.Container, *schema.List:
-					collectRPCActions(node.GetBase().Children)
-				}
+		modulePrefix := toCamelCaseTitle(mod.Name)
+		for _, name := range getSortedChildNames(mod.Nodes) {
+			node := mod.Nodes[name]
+			rpcNode, ok := node.(*schema.RPC)
+			if !ok {
+				continue
 			}
+
+			methodName := toCamelCaseTitle(rpcNode.Name())
+			msgPrefix := modulePrefix + methodName
+			rpcMethods = append(rpcMethods, fmt.Sprintf("\trpc %s(%sInput) returns (%sOutput);\n",
+				methodName, msgPrefix, msgPrefix))
 		}
-		collectRPCActions(mod.Nodes)
 		if len(rpcMethods) > 0 {
 			svcName := toCamelCaseTitle(mod.Name) + "Service"
 			if _, err := fmt.Fprintf(w, "service %s {\n", svcName); err != nil {
@@ -261,34 +259,83 @@ func (g *ProtoGenerator) GenerateDevice(modules []*schema.Module, w io.Writer) e
 	return nil
 }
 
-func (g *ProtoGenerator) generateNode(node schema.Node, w io.Writer, visited map[string]bool) error {
+func (g *ProtoGenerator) generateNode(node schema.Node, w io.Writer, visited map[string]bool, pathPrefix string) error {
 	switch n := node.(type) {
 	case *schema.Container:
-		return g.generateMessage(n.Name(), n.Description, n.Children, w, visited)
+		return g.generateMessage(n.Name(), n.Description, n.Children, w, visited, pathPrefix)
 	case *schema.List:
-		return g.generateMessage(n.Name(), n.Description, n.Children, w, visited)
-	case *schema.RPC, *schema.Action:
+		return g.generateMessage(n.Name(), n.Description, n.Children, w, visited, pathPrefix)
+	case *schema.RPC:
 		base := node.GetBase()
-		rpcPrefix := toCamelCaseTitle(base.NodeName)
+		rpcPrefix := pathPrefix + toCamelCaseTitle(base.NodeName)
 		if inputNode, ok := base.Children["input"]; ok {
 			if inp, ok2 := inputNode.(*schema.Input); ok2 {
-				if err := g.generateMessage(rpcPrefix+"Input", nil, inp.Children, w, visited); err != nil {
+				if err := g.generateMessage(rpcPrefix+"Input", nil, inp.Children, w, visited, rpcPrefix); err != nil {
 					return err
 				}
 			}
 		}
 		if outputNode, ok := base.Children["output"]; ok {
 			if out, ok2 := outputNode.(*schema.Output); ok2 {
-				if err := g.generateMessage(rpcPrefix+"Output", nil, out.Children, w, visited); err != nil {
+				if err := g.generateMessage(rpcPrefix+"Output", nil, out.Children, w, visited, rpcPrefix); err != nil {
 					return err
 				}
 			}
 		}
 		return nil
+	case *schema.Action:
+		base := node.GetBase()
+		actionPrefix := toCamelCaseTitle(base.NodeName)
+		if visited[actionPrefix] {
+			return nil
+		}
+		visited[actionPrefix] = true
+
+		if _, err := fmt.Fprintf(w, "message %s {\n", actionPrefix); err != nil {
+			return fmt.Errorf("write err: %w", err)
+		}
+
+		fieldIndex := 1
+		if inputNode, ok := base.Children["input"]; ok {
+			if _, ok2 := inputNode.(*schema.Input); ok2 {
+				if _, err := fmt.Fprintf(w, "\t%sInput input = %d;\n", actionPrefix, fieldIndex); err != nil {
+					return fmt.Errorf("write err: %w", err)
+				}
+				fieldIndex++
+			}
+		}
+		if outputNode, ok := base.Children["output"]; ok {
+			if _, ok2 := outputNode.(*schema.Output); ok2 {
+				if _, err := fmt.Fprintf(w, "\t%sOutput output = %d;\n", actionPrefix, fieldIndex); err != nil {
+					return fmt.Errorf("write err: %w", err)
+				}
+			}
+		}
+
+		if _, err := fmt.Fprintf(w, "}\n\n"); err != nil {
+			return fmt.Errorf("write err: %w", err)
+		}
+
+		if inputNode, ok := base.Children["input"]; ok {
+			if inp, ok2 := inputNode.(*schema.Input); ok2 {
+				if err := g.generateMessage(actionPrefix+"Input", nil, inp.Children, w, visited, actionPrefix); err != nil {
+					return err
+				}
+			}
+		}
+		if outputNode, ok := base.Children["output"]; ok {
+			if out, ok2 := outputNode.(*schema.Output); ok2 {
+				if err := g.generateMessage(actionPrefix+"Output", nil, out.Children, w, visited, actionPrefix); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
 	case *schema.Notification:
 		notifMsgName := toCamelCaseTitle(n.Name()) + "Notification"
 		desc := n.GetBase().Description
-		return g.generateMessage(notifMsgName, desc, n.GetBase().Children, w, visited)
+		return g.generateMessage(notifMsgName, desc, n.GetBase().Children, w, visited, pathPrefix)
 	}
 	return nil
 }
@@ -304,7 +351,7 @@ func (g *ProtoGenerator) shouldSkip(node schema.Node) bool {
 	return false
 }
 
-func (g *ProtoGenerator) generateMessage(name string, description *string, children map[string]schema.Node, w io.Writer, visited map[string]bool) error {
+func (g *ProtoGenerator) generateMessage(name string, description *string, children map[string]schema.Node, w io.Writer, visited map[string]bool, pathPrefix string) error {
 	msgName := toCamelCaseTitle(name)
 	if visited[msgName] {
 		return nil
@@ -334,7 +381,7 @@ func (g *ProtoGenerator) generateMessage(name string, description *string, child
 		if g.shouldSkip(child) {
 			continue
 		}
-		if err := g.generateField(child, w, &fieldIndex); err != nil {
+		if err := g.generateField(child, w, &fieldIndex, pathPrefix+msgName); err != nil {
 			return err
 		}
 	}
@@ -348,7 +395,7 @@ func (g *ProtoGenerator) generateMessage(name string, description *string, child
 		if g.shouldSkip(child) {
 			continue
 		}
-		if err := g.generateNode(child, w, visited); err != nil {
+		if err := g.generateNode(child, w, visited, pathPrefix+msgName); err != nil {
 			return err
 		}
 		// Also handle nested cases if any
@@ -377,13 +424,16 @@ func (g *ProtoGenerator) generateCaseMessage(n *schema.Case, w io.Writer, visite
 	if _, err := fmt.Fprintf(w, "message %s {\n", msgName); err != nil {
 		return fmt.Errorf("write err: %w", err)
 	}
+	if err := g.generateEnumBlocks(n.Children, w); err != nil {
+		return err
+	}
 	fieldIndex := 1
 	for _, childName := range getSortedChildNames(n.Children) {
 		child := n.Children[childName]
 		if g.shouldSkip(child) {
 			continue
 		}
-		if err := g.generateField(child, w, &fieldIndex); err != nil {
+		if err := g.generateField(child, w, &fieldIndex, msgName); err != nil {
 			return err
 		}
 	}
@@ -396,14 +446,25 @@ func (g *ProtoGenerator) generateCaseMessage(n *schema.Case, w io.Writer, visite
 		if g.shouldSkip(child) {
 			continue
 		}
-		if err := g.generateNode(child, w, visited); err != nil {
+		if err := g.generateNode(child, w, visited, msgName); err != nil {
 			return err
+		}
+		// Handle nested choices inside this case message.
+		if choice, ok := child.(*schema.Choice); ok {
+			for _, caseName := range getSortedChildNames(choice.Children) {
+				caseNode := choice.Children[caseName]
+				if c, ok := caseNode.(*schema.Case); ok {
+					if err := g.generateCaseMessage(c, w, visited); err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 	return nil
 }
 
-func (g *ProtoGenerator) generateField(node schema.Node, w io.Writer, fieldIndex *int) error {
+func (g *ProtoGenerator) generateField(node schema.Node, w io.Writer, fieldIndex *int, pathPrefix string) error {
 	fieldName := convertToSnakeCase(node.Name())
 	var protoType string
 
@@ -553,8 +614,15 @@ func (g *ProtoGenerator) generateField(node schema.Node, w io.Writer, fieldIndex
 			return fmt.Errorf("write err: %w", err)
 		}
 		*fieldIndex++
-	case *schema.RPC, *schema.Action, *schema.Notification:
-		// These are not proto message fields — skipped here, handled as service blocks / messages in GenerateDevice
+	case *schema.Action:
+		protoType = toCamelCaseTitle(n.Name())
+		if _, err := fmt.Fprintf(w, "\t%s %s = %d;\n", protoType, fieldName, *fieldIndex); err != nil {
+			return fmt.Errorf("write err: %w", err)
+		}
+		*fieldIndex++
+	case *schema.RPC, *schema.Notification:
+		// These are not proto message fields — skipped here, handled as
+		// standalone operation/notification message emission.
 		return nil
 	}
 

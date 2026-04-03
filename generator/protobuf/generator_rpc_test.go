@@ -14,7 +14,7 @@ import (
 )
 
 // TestRPCServiceBlock verifies that a *schema.RPC node emits a service block with rpc method,
-// and both Input and Output message definitions.
+// and both Input and Output message definitions with module-scoped names.
 func TestRPCServiceBlock(t *testing.T) {
 
 	t.Parallel()
@@ -55,15 +55,14 @@ module test-rpc {
 	assert.Contains(t, out, "service", "rpc node must emit a service block")
 	assert.Contains(t, out, "Service", "service block must be named after the module with a 'Service' suffix")
 	assert.Contains(t, out, "rpc ", "service block must contain an rpc method")
-	assert.Contains(t, out, "ResetCountersInput", "rpc node must emit an Input message type")
-	assert.Contains(t, out, "ResetCountersOutput", "rpc node must emit an Output message type")
-	assert.Contains(t, out, "message ResetCountersInput", "Input message must be defined")
-	assert.Contains(t, out, "message ResetCountersOutput", "Output message must be defined")
+	assert.Contains(t, out, "rpc ResetCounters(TestRpcResetCountersInput) returns (TestRpcResetCountersOutput)", "rpc signature must use module-scoped request/response types")
+	assert.Contains(t, out, "message TestRpcResetCountersInput", "Input message must be defined with module scope")
+	assert.Contains(t, out, "message TestRpcResetCountersOutput", "Output message must be defined with module scope")
 }
 
-// TestActionServiceBlock verifies that a *schema.Action node emits a service block with
-// rpc method, and both Input and Output message definitions.
-func TestActionServiceBlock(t *testing.T) {
+// TestActionMessageOnly verifies that a *schema.Action node emits Input/Output messages
+// but does not emit a gRPC service method.
+func TestActionMessageOnly(t *testing.T) {
 
 	t.Parallel()
 	yangSource := `
@@ -102,13 +101,61 @@ module test-action {
 	require.NoError(t, err)
 
 	out := buf.String()
-	assert.Contains(t, out, "service", "action node must emit a service block")
-	assert.Contains(t, out, "Service", "service block must be named after the module with a 'Service' suffix")
-	assert.Contains(t, out, "rpc ", "service block must contain an rpc method entry")
-	assert.Contains(t, out, "PingInput", "action node must emit an Input message type")
-	assert.Contains(t, out, "PingOutput", "action node must emit an Output message type")
-	assert.Contains(t, out, "message PingInput", "Input message must be defined")
-	assert.Contains(t, out, "message PingOutput", "Output message must be defined")
+	assert.NotContains(t, out, "service TestActionService", "action-only modules must not emit service blocks")
+	assert.NotContains(t, out, "rpc Ping(", "actions must not be emitted as grpc methods")
+	assert.Contains(t, out, "message Network", "parent container message must be emitted")
+	assert.Contains(t, out, "Ping ping = 1;", "action must be represented as a field in its parent message using normal naming strategy")
+	assert.Contains(t, out, "message Ping", "action wrapper message must use action name")
+	assert.Contains(t, out, "message PingInput", "action input message must use action name")
+	assert.Contains(t, out, "message PingOutput", "action output message must use action name")
+}
+
+// TestActionContextUniqueNames verifies that actions with the same name in different
+// YANG contexts produce distinct Input/Output message names.
+func TestActionContextUniqueNames(t *testing.T) {
+	t.Parallel()
+	yangSource := `
+module test-action-context {
+	namespace "urn:test-action-context";
+	prefix tac;
+
+	container access {
+		action reset {
+			input { leaf reason { type string; } }
+			output { leaf ok { type boolean; } }
+		}
+	}
+
+	container transport {
+		action reset {
+			input { leaf reason { type string; } }
+			output { leaf ok { type boolean; } }
+		}
+	}
+}
+`
+	l := lexer.New(yangSource)
+	p := parser.New(l)
+	astMod := p.ParseModule()
+	require.NotNil(t, astMod)
+
+	comp := compiler.New(nil)
+	schemaMod, err := comp.Compile(astMod)
+	require.NoError(t, err)
+
+	gen := protobuf.New(&protobuf.Options{PackageName: "test", RootName: "Device"})
+	var buf bytes.Buffer
+	err = gen.GenerateDevice([]*schema.Module{schemaMod}, &buf)
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "message Access", "access container message must be emitted")
+	assert.Contains(t, out, "message Transport", "transport container message must be emitted")
+	assert.Contains(t, out, "Reset reset = 1;", "action must be represented as a field in parent containers")
+	assert.Contains(t, out, "message Reset", "action wrapper message must be emitted")
+	assert.Contains(t, out, "message ResetInput")
+	assert.Contains(t, out, "message ResetOutput")
+	assert.NotContains(t, out, "service TestActionContextService", "action-only modules must not emit services")
 }
 
 // TestNotificationMessage verifies that a *schema.Notification node emits a standalone message
